@@ -1,0 +1,176 @@
+{
+  "motor_stop": [
+    {
+      "type": "motor",
+      "action": "stop"
+    }
+  ],
+  "patrol": [
+    {
+      "type": "motor",
+      "action": "patrol"
+    },
+    {
+      "type": "lcd",
+      "action": "display_picture",
+      "args": {
+        "name": "patrol"
+      }
+    }
+  ],
+  "move_motor_forward": [
+    {
+      "type": "motor",
+      "action": "move",
+      "args": {
+        "left_orientation": "F",
+        "left_speed": 100,
+        "right_orientation": "F",
+        "right_speed": 100,
+        "duration": 0.5,
+        "distance": null,
+        "rotation": null,
+        "auto_stop": false
+      }
+    }
+  ],
+  "move_motor_backward": [
+    {
+      "type": "motor",
+      "action": "move",
+      "args": {
+        "left_orientation": "B",
+        "left_speed": 100,
+        "right_orientation": "B",
+        "right_speed": 100,
+        "duration": 0.5,
+        "distance": null,
+        "rotation": null,
+        "auto_stop": false
+      }
+    }
+  ],
+  "move_motor_right": [
+    {
+      "type": "motor",
+      "action": "move",
+      "args": {
+        "left_orientation": "F",
+        "left_speed": 100,
+        "right_orientation": "B",
+        "right_speed": 100,
+        "duration": 5,
+        "distance": null,
+        "rotation": 30,
+        "auto_stop": false
+      }
+    }
+  ],
+  "move_motor_left": [
+    {
+      "type": "motor",
+      "action": "move",
+      "args": {
+        "left_orientation": "B",
+        "left_speed": 100,
+        "right_orientation": "F",
+        "right_speed": 100,
+        "duration": 5,
+        "distance": null,
+        "rotation": 30,
+        "auto_stop": false
+      }
+    }
+  ],
+  "light_toggle": [
+    {
+      "type": "light",
+      "action": "toggle"
+    }
+  ],
+  "left_blink": [
+    {
+      "type": "light",
+      "action": "blink",
+      "args": {
+        "left_on": true,
+        "right_on": false
+      }
+    },
+    {
+      "type": "sfx",
+      "action": "play",
+      "args": {
+        "name": "blinker"
+      }
+    }
+  ],
+  "right_blink": [
+    {
+      "type": "light",
+      "action": "blink",
+      "args": {
+        "left_on": false,
+        "right_on": true
+      }
+    },
+    {
+      "type": "sfx",
+      "action": "play",
+      "args": {
+        "name": "blinker"
+      }
+    }
+  ],
+  "sfx_play_blinker": [
+    {
+      "type": "sfx",
+      "action": "play",
+      "args": {
+        "name": "blinker"
+      }
+    }
+  ],
+  "sfx_play_bike_horn": [
+    {
+      "type": "sfx",
+      "action": "play",
+      "args": {
+        "name": "bike_horn"
+      }
+    }
+  ],
+  "sfx_play_car_double_horn": [
+    {
+      "type": "sfx",
+      "action": "play",
+      "args": {
+        "name": "car_double_horn"
+      }
+    }
+  ],
+  "sfx_play_animal_yay": [
+    {
+      "type": "sfx",
+      "action": "play",
+      "args": {
+        "name": "animal-yay"
+      }
+    }
+  ],
+  "sfx_play_pet_squeak_toy": [
+    {
+      "type": "sfx",
+      "action": "play",
+      "args": {
+        "name": "pet-squeak-toy"
+      }
+    }
+  ],
+  "toggle_face_detection": [
+    {
+      "type": "camera",
+      "action": "toggle_face_detection"
+    }
+  ]
+}
