@@ -3,4 +3,6 @@ Pipfile.lock
 
 build
 dist
-*.spec
+*
+
+

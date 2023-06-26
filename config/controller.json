@@ -50,16 +50,28 @@
           "action": "motor_slow_mode"
         },
         "BTN_DPAD_UP": {
-          "action": "move_motor_forward"
+          "action": "motor",
+          "axis": "y",
+          "down": -100,
+          "up": 0
         },
         "BTN_DPAD_DOWN": {
-          "action": "move_motor_backward"
+          "action": "motor",
+          "axis": "y",
+          "down": 100,
+          "up": 0
         },
         "BTN_DPAD_LEFT": {
-          "action": "move_motor_left"
+          "action": "motor",
+          "axis": "x",
+          "down": -100,
+          "up": 0
         },
         "BTN_DPAD_RIGHT": {
-          "action": "move_motor_right"
+          "action": "motor",
+          "axis": "x",
+          "down": 100,
+          "up": 0
         }
       }
     },

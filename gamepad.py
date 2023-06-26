@@ -1,7 +1,9 @@
-import traceback
+import logging
 
 from evdev import InputDevice, categorize, ecodes, list_devices
 from evdev.util import resolve_ecodes
+
+logger = logging.getLogger(__name__)
 
 
 class GamePad(object):
@@ -33,7 +35,7 @@ class GamePad(object):
             except KeyboardInterrupt:
                 raise
             except:
-                traceback.print_exc()
+                logger.error("Unable to process gamepad event", exc_info=True)
                 continue
 
     @staticmethod
@@ -42,7 +44,6 @@ class GamePad(object):
 
     def __init__(self, device):
         self.device = device
-        self.absolute_axis_positions = {}
 
     def get_position(self, event):
         absinfo = self.device.absinfo(event.code)
@@ -54,10 +55,8 @@ class GamePad(object):
                 break
             if event.type == ecodes.EV_ABS:
                 axis, _ = resolve_ecodes(ecodes.ABS, [event.code])[0]
-                self.absolute_axis_positions[axis] = self.get_position(event)
-                callback["absolute_axis"](axis, self.absolute_axis_positions)
+                callback["absolute_axis"](axis, self.get_position(event))
             elif event.type == ecodes.EV_KEY:
-                if event.value == 1:
-                    callback["key"](resolve_ecodes(ecodes.keys, [event.code])[0])
+                callback["key"](resolve_ecodes(ecodes.keys, [event.code])[0], down=event.value == 1)
             elif event.type == ecodes.EV_SYN:
                 pass

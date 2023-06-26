@@ -7,6 +7,7 @@ from PyQt5.QtGui import QKeySequence
 
 from gamepad import GamePad
 
+
 class Client(object):
 
     def __init__(self, app):
@@ -18,6 +19,8 @@ class Client(object):
         self.actions = {}
         self.controller_mapping = {}
         self.axis_mapping = {}
+        self.absolute_axis_positions = {}
+        self.axis_positions = {}
         if not os.path.isdir(self.config_path):
             self.config_path = "/etc/piremote/config"
 
@@ -78,25 +81,24 @@ class Client(object):
             print("Not gamepad connect")
             return {}
 
-    def gamepad_absolute_axis_callback(self, axis, positions):
+    def gamepad_absolute_axis_callback(self, axis, position):
+        self.absolute_axis_positions[axis] = position
         gamepad_absolute_mapping = self.get_gamepad_config().get("absolute_axis", {})
-        axis_mapping = self.get_gamepad_config().get("axis_mapping", {})
         if axis in gamepad_absolute_mapping:
             action = gamepad_absolute_mapping[axis]["action"]
+            axis_mapping = self.get_gamepad_config().get("axis_mapping", {})
             if action in axis_mapping:
-                x_pos = self.get_normalized_position(action, "x", positions)
-                y_pos = self.get_normalized_position(action, "y", positions)
-                if action == "motor":
-                    self.move_motor(x_pos, y_pos)
-                elif action == "camera":
-                    self.move_camera(x_pos, y_pos)
+                x_pos = self.get_normalized_position(action, "x")
+                y_pos = self.get_normalized_position(action, "y")
+                self.axis_positions[action] = {"x": x_pos, "y": y_pos}
+                self.run_axis_action(action)
 
-    def get_normalized_position(self, action, axis, positions):
+    def get_normalized_position(self, action, axis):
         axis_mapping = self.get_gamepad_config().get("axis_mapping")
         if axis not in axis_mapping[action]:
             return 0
         code = axis_mapping[action][axis]["code"]
-        positions = {str(code): value for code, value in positions.items()}
+        positions = {str(code): value for code, value in self.absolute_axis_positions.items()}
         if code not in positions:
             return 0
         absolute_position = positions[code]["value"]
@@ -147,7 +149,15 @@ class Client(object):
                                                                           auto_stop=False,
                                                                           )))
 
-    def gamepad_key_callback(self, key):
+    def run_axis_action(self, action):
+            x_pos = self.axis_positions.get(action, {}).get("x", 0)
+            y_pos = self.axis_positions.get(action, {}).get("y", 0)
+            if action == "motor":
+                self.move_motor(x_pos, y_pos)
+            elif action == "camera":
+                self.move_camera(x_pos, y_pos)
+
+    def gamepad_key_callback(self, key, down):
         key_str, code = key
         if not isinstance(key_str, list):
             key_str = [key_str]
@@ -157,7 +167,17 @@ class Client(object):
         for k in key_str:
             if k in gamepad_key_mapping:
                 found = True
-                self.run_action(gamepad_key_mapping[k]["action"])
+                key_config = gamepad_key_mapping[k]
+                if "action" in key_config:
+                    action = key_config["action"]
+                    if "axis" in key_config:
+                        axis = key_config["axis"]
+                        if action not in self.axis_positions:
+                            self.axis_positions[action] = {"x": 0, "y": 0}
+                        self.axis_positions[action][axis] = key_config["down"] if down else key_config["up"]
+                        self.run_axis_action(action)
+                    elif down:
+                        self.run_action(action)
                 break
 
         if not found:

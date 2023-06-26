@@ -1,7 +1,7 @@
 import traceback
 
 from PyQt5 import QtGui
-from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QLabel, QComboBox, QPushButton, QDialog, QMainWindow, QLineEdit, QCompleter
+from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QDialog, QMainWindow, QLineEdit, QCompleter, QStatusBar
 from PyQt5.QtGui import QPixmap, QFont
 from PyQt5.QtCore import pyqtSignal, pyqtSlot, Qt, QThread
 
@@ -18,11 +18,15 @@ from client import Client
 
 class VideoThread(QThread):
     change_pixmap_signal = pyqtSignal(np.ndarray)
+    FPS_UPDATE_INTERVAL = 1
 
     def __init__(self, host_ip):
         super().__init__()
         self.host_ip = host_ip
         self.running = False
+        self.frame_counter = 0
+        self.last_frame_ts = None
+        self.fps = 0
 
     def stop(self):
         self.running = False
@@ -37,6 +41,7 @@ class VideoThread(QThread):
                 client_socket.connect((self.host_ip, port))  # a tuple
                 data = b""
                 payload_size = struct.calcsize("Q")
+                self.last_frame_ts = time.time()
                 while self.running:
                     while len(data) < payload_size:
                         packet = client_socket.recv(4 * 1024)  # 4K
@@ -48,10 +53,20 @@ class VideoThread(QThread):
 
                     while len(data) < msg_size:
                         data += client_socket.recv(4 * 1024)
+                    # New frame received, indicate we're ready for the next one
+                    client_socket.send(b"RDY\n")
                     frame_data = data[:msg_size]
                     data = data[msg_size:]
                     frame = np.frombuffer(frame_data, dtype="byte")
                     frame = cv2.imdecode(frame, cv2.IMREAD_UNCHANGED)
+                    # Update fps
+                    self.frame_counter += 1
+                    now = time.time()
+                    if now > self.last_frame_ts + VideoThread.FPS_UPDATE_INTERVAL:
+                        self.fps = round(self.frame_counter / (now - self.last_frame_ts))
+                        self.last_frame_ts = now
+                        self.frame_counter = 0
+
                     self.change_pixmap_signal.emit(frame)
             except KeyboardInterrupt:
                 self.stop()
@@ -146,7 +161,7 @@ class App(QMainWindow):
         super().__init__()
 
         self.setWindowTitle("PiRobot Remote Control")
-        self.resize(640, 480)
+        self.resize(800, 600)
         if full_screen:
             self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
             self.showFullScreen()
@@ -154,6 +169,11 @@ class App(QMainWindow):
         # create the label that holds the image
         self.image_label = ImageLabel(self)
         self.setCentralWidget(self.image_label)
+
+        # Status bar
+        self.status_bar = QStatusBar()
+        self.status_bar.showMessage("Connecting...")
+        self.setStatusBar(self.status_bar)
 
         # Connect to Host
         self.client = Client(self)
@@ -181,6 +201,7 @@ class App(QMainWindow):
             if self.gamepad_thread is not None:
                 self.stop_gamepad()
             self.start_gamepad()
+            self.status_bar.showMessage("Connected!")
         except:
             traceback.print_exc()
             self.open_select_host_window(f"Unable to connect to {hostname}")
@@ -207,11 +228,12 @@ class App(QMainWindow):
         """Updates the image_label with a new opencv image"""
         qt_img = self.convert_cv_qt(cv_img)
         self.image_label.setPixmap(qt_img)
+        self.status_bar.showMessage(f"Connected! FPS: {self.video_thread.fps}")
 
     def convert_cv_qt(self, cv_img):
         """Convert from an opencv image to QPixmap"""
         rgb_image = cv2.cvtColor(cv_img, cv2.COLOR_BGR2RGB)
-        rgb_image = cv2.resize(rgb_image, (self.size().width(), self.size().height()))
+        rgb_image = cv2.resize(rgb_image, (self.image_label.size().width(), self.image_label.size().height()))
         h, w, ch = rgb_image.shape
         bytes_per_line = ch * w
         convert_to_Qt_format = QtGui.QImage(rgb_image.data, w, h, bytes_per_line, QtGui.QImage.Format_RGB888)
