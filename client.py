@@ -87,6 +87,7 @@ class Client(object):
             self.port = port
             threading.Thread(target=self.run_forever, daemon=True).start()
         except:
+            self.socket = None
             print(f"Unable to connect to {host_ip}")
             raise
 

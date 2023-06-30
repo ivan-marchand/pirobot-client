@@ -174,6 +174,9 @@ class App(QMainWindow):
     def __init__(self, hostname, server_port, video_server_port, full_screen):
         super().__init__()
 
+        # Update window title
+        self.setWindowTitle("PiRobot Remote Control")
+
         self.robot_name = "PiRobot"
         self.resize(800, 600)
         self.create_menu_bar()
@@ -203,15 +206,19 @@ class App(QMainWindow):
             self.connect_to_host(self.hostname)
         self.update_status_bar()
 
-    def update_status_bar(self):
-        # Update window title
-        self.setWindowTitle(f"{self.robot_name} Remote Control")
+    def closeEvent(self,event):
+        for popup in self.popups.values():
+            if popup.isVisible():
+                popup.close()
 
+    def update_status_bar(self):
         # Update status bar
         if not self.client.is_connected():
             status_message = "Connecting..."
         else:
-            status_message = f"Connected to {self.hostname} | FPS: {self.video_thread.fps}"
+            status_message = f"Connected to {self.hostname} | {self.robot_name}"
+            if self.video_thread is not None:
+                status_message += f" | FPS: {self.video_thread.fps}"
 
         self.status_bar.showMessage(status_message)
 
