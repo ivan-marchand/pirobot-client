@@ -41,10 +41,10 @@
           "action": "right_blink"
         },
         "BTN_TR": {
-          "action": "sfx_play_animal_yay"
+          "action": "sfx_play_bike_horn"
         },
         "BTN_TL": {
-          "action": "sfx_play_pet_squeak_toy"
+          "action": "sfx_play_car_double_horn"
         },
         "BTN_THUMBL": {
           "action": "motor_slow_mode"
@@ -114,22 +114,40 @@
   },
   "keyboard": {
     "UP": {
-      "action": "move_motor_forward"
+        "action": "motor",
+        "axis": "y",
+        "down": -100,
+        "up": 0
     },
     "DOWN": {
-      "action": "move_motor_backward"
+        "action": "motor",
+        "axis": "y",
+        "down": 100,
+        "up": 0
     },
     "LEFT": {
-      "action": "move_motor_left"
+        "action": "motor",
+        "axis": "x",
+        "down": -100,
+        "up": 0
     },
     "RIGHT": {
-      "action": "move_motor_right"
+        "action": "motor",
+        "axis": "x",
+        "down": 100,
+        "up": 0
     },
     "Q": {
       "action": "app_close"
     },
     "C": {
       "action": "select_host"
+    },
+    "P": {
+      "action": "say_message"
+    },
+    "D": {
+      "action": "display_message"
     },
     "SPACE": {
       "action": "sfx_play_bike_horn"

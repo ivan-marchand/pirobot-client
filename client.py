@@ -1,6 +1,7 @@
 import json
-import socket
 import os
+import socket
+import threading
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QKeySequence
@@ -15,6 +16,7 @@ class Client(object):
         self.socket = None
         self.motor_slow_mode = False
         self.host_ip = None
+        self.port = None
         self.config_path = "config"
         self.actions = {}
         self.controller_mapping = {}
@@ -23,8 +25,12 @@ class Client(object):
         self.axis_positions = {}
         if not os.path.isdir(self.config_path):
             self.config_path = "/etc/piremote/config"
+        self.consumers = {}
 
         self.load_config()
+
+    def is_connected(self):
+        return self.socket is not None
 
     def load_config(self):
         with open(os.path.join(self.config_path, "actions.json")) as action_file:
@@ -48,6 +54,12 @@ class Client(object):
             self.app.close()
         elif action_id == "select_host":
             self.app.open_select_host_window()
+        elif action_id == "say_message":
+            self.app.open_play_message_window(destination="audio")
+        elif action_id == "display_message":
+            self.app.open_play_message_window(destination="lcd")
+        elif action_id == "config_manager":
+            self.app.open_config_manager()
         elif action_id == "motor_slow_mode":
             self.motor_slow_mode = not self.motor_slow_mode
         elif action_id in self.actions:
@@ -61,18 +73,46 @@ class Client(object):
     def __del__(self):
         if self.socket is not None:
             self.socket.close()
+            self.socket = None
 
-    def connect(self, host_ip):
+    def connect(self, host_ip, port):
         try:
             if self.socket is not None:
                 self.socket.close()
+                self.socket = None
             self.socket = socket.socket(socket.AF_INET)
             self.socket.settimeout(1)
-            self.socket.connect((host_ip, 8000))
+            self.socket.connect((host_ip, port))
             self.host_ip = host_ip
+            self.port = port
+            threading.Thread(target=self.run_forever, daemon=True).start()
         except:
             print(f"Unable to connect to {host_ip}")
             raise
+
+    def register_consumer(self, message_type, consumer):
+        if message_type not in self.consumers:
+            self.consumers[message_type] = []
+        self.consumers[message_type].append(consumer)
+
+    def run_forever(self):
+        buffer = ""
+        while self.socket is not None:
+            try:
+                self.socket.setblocking(False)
+                packet = self.socket.recv(4 * 1024)  # 4K
+                if not packet:
+                    continue
+                buffer += packet.decode()
+                pos = buffer.find("\n")
+                if pos > 0:
+                    message = buffer[:pos]
+                    buffer = buffer[pos + 1:]
+                    message = json.loads(message)
+                    for consumer in self.consumers.get(message["type"], []):
+                        consumer(message)
+            except:
+                continue
 
     def get_gamepad_config(self):
         if GamePad.gamepad is not None and GamePad.gamepad.device is not None:
@@ -143,7 +183,7 @@ class Client(object):
                                                                           left_speed=abs(left_speed),
                                                                           right_orientation=right_orientation,
                                                                           right_speed=abs(right_speed),
-                                                                          duration=10,
+                                                                          duration=30,
                                                                           distance=None,
                                                                           rotation=None,
                                                                           auto_stop=False,
@@ -190,13 +230,21 @@ class Client(object):
             # In case of failure try to reconnect
             if self.host_ip is not None:
                 print("Unable to send message, reconnect")
-                self.connect(self.host_ip)
+                self.connect(self.host_ip, self.port)
                 self.socket.sendall(json.dumps(message).encode() + b"\n")
 
     def button_callback(self, action_id):
         self.run_action(action_id)
 
-    def key_press_callback(self, e):
+    def play_message(self, message, destination="lcd"):
+        socket_message = {
+            "type": "message",
+            "action": "play",
+            "args": {"message": message, "destination": destination}
+        }
+        self.send_message(socket_message)
+
+    def key_press_callback(self, e, down):
         keyboard_mapping = self.controller_mapping.get("keyboard")
         key_str = QKeySequence(e.key()).toString().upper()
         if e.key() == Qt.Key_Shift:
@@ -206,6 +254,16 @@ class Client(object):
         elif e.key() == Qt.Key_Control:
             key_str = "CONTROL"
         if key_str in keyboard_mapping:
-            self.run_action(keyboard_mapping[key_str]["action"])
+            key_config = keyboard_mapping[key_str]
+            if "action" in key_config:
+                action = key_config["action"]
+                if "axis" in key_config:
+                    axis = key_config["axis"]
+                    if action not in self.axis_positions:
+                        self.axis_positions[action] = {"x": 0, "y": 0}
+                    self.axis_positions[action][axis] = key_config["down"] if down else key_config["up"]
+                    self.run_axis_action(action)
+                elif down:
+                    self.run_action(action)
         else:
             print(f"Key not found {key_str}")
