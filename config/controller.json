@@ -140,6 +140,9 @@
     "Q": {
       "action": "app_close"
     },
+    "F": {
+      "action": "toggle_face_detection"
+    },
     "C": {
       "action": "select_host"
     },
