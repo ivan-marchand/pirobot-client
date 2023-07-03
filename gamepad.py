@@ -1,37 +1,46 @@
 import logging
-
-from evdev import InputDevice, categorize, ecodes, list_devices
-from evdev.util import resolve_ecodes
+import pygame
 
 logger = logging.getLogger(__name__)
 
 
-class GamePad(object):
-    gamepad = None
+class GamePad():
     running = False
 
     @staticmethod
-    def get_available_devices():
-        return [InputDevice(path) for path in list_devices()]
-
-    @staticmethod
-    def get_device(name=None):
-        for device in GamePad.get_available_devices():
-            if name is None or name == device.name:
-                return device
-
-        return None
-
-    @staticmethod
     def start_loop(device_name=None, callback=dict()):
+        joysticks = {}
+
         GamePad.running = True
         while GamePad.running:
             try:
-                device = GamePad.get_device(name=device_name)
-                if device is not None:
-                    print(f"Connected to {device.name}")
-                    GamePad.gamepad = GamePad(device)
-                    GamePad.gamepad.loop(callback=callback)
+                if not pygame.get_init():
+                    pygame.init()
+                for event in pygame.event.get():
+                    # Buttons
+                    if event.type in [pygame.JOYBUTTONDOWN, pygame.JOYBUTTONUP]:
+                        joystick = joysticks[event.instance_id]
+                        callback["button"](joystick, event.button, event.type == pygame.JOYBUTTONDOWN)
+                    # AXIS
+                    if event.type == pygame.JOYAXISMOTION:
+                        joystick = joysticks[event.instance_id]
+                        callback["axis_motion"](joystick, event.axis)
+                    # HAT
+                    if event.type == pygame.JOYHATMOTION:
+                        joystick = joysticks[event.instance_id]
+                        callback["hat_motion"](joystick, event.hat, event.value[0], event.value[1])
+
+                    # Joystick Added
+                    if event.type == pygame.JOYDEVICEADDED:
+                        joy = pygame.joystick.Joystick(event.device_index)
+                        joysticks[joy.get_instance_id()] = joy
+                        print(f"Joystick {joy.get_name()} ({joy.get_guid()}) connected")
+
+                    # Joystick Remove
+                    if event.type == pygame.JOYDEVICEREMOVED:
+                        del joysticks[event.instance_id]
+                        print(f"Joystick {joy.get_name()} ({joy.get_guid()}) disconnected")
+
             except KeyboardInterrupt:
                 raise
             except:
@@ -41,22 +50,3 @@ class GamePad(object):
     @staticmethod
     def stop_loop():
         GamePad.running = False
-
-    def __init__(self, device):
-        self.device = device
-
-    def get_position(self, event):
-        absinfo = self.device.absinfo(event.code)
-        return dict(value=event.value, min=absinfo.min, max=absinfo.max)
-
-    def loop(self, callback):
-        for event in self.device.read_loop():
-            if not GamePad.running:
-                break
-            if event.type == ecodes.EV_ABS:
-                axis, _ = resolve_ecodes(ecodes.ABS, [event.code])[0]
-                callback["absolute_axis"](axis, self.get_position(event))
-            elif event.type == ecodes.EV_KEY:
-                callback["key"](resolve_ecodes(ecodes.keys, [event.code])[0], down=event.value == 1)
-            elif event.type == ecodes.EV_SYN:
-                pass

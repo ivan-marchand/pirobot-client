@@ -1,76 +1,75 @@
 {
   "gamepad": {
-    "Nintendo Wii Remote Pro Controller": {
+    "030060fcc82d00001630000011010000": {
       "absolute_axis": {
-        "ABS_X": {
+        "0": {
           "action": "motor",
-          "axis": "x",
-          "min": -1200,
-          "max": 1200
+          "axis": "x"
         },
-        "ABS_Y": {
+        "1": {
           "action": "motor",
-          "axis": "y",
-          "min": -1200,
-          "max": 1200
+          "axis": "y"
         },
-        "ABS_RY": {
+        "3": {
           "action": "camera",
-          "axis": "y",
-          "min": -1200,
-          "max": 1200
+          "axis": "y"
         }
       },
-      "key": {
-        "BTN_B": {
+      "hat" : {
+        "0": {
+          "action": "motor"
+        }
+      },
+      "button": {
+        "1": {
           "action": "light_toggle"
         },
-        "BTN_X": {
+        "4": {
           "action": "toggle_face_detection"
         },
-        "BTN_Y": {
+        "3": {
           "action": "patrol"
         },
-        "BTN_A": {
+        "0": {
           "action": "motor_stop"
         },
-        "BTN_TL2": {
+        "10": {
           "action": "left_blink"
         },
-        "BTN_TR2": {
+        "11": {
           "action": "right_blink"
         },
-        "BTN_TR": {
+        "7": {
           "action": "sfx_play_bike_horn"
         },
-        "BTN_TL": {
+        "6": {
           "action": "sfx_play_car_double_horn"
         },
-        "BTN_THUMBL": {
+        "13": {
           "action": "motor_slow_mode"
         },
         "BTN_DPAD_UP": {
           "action": "motor",
           "axis": "y",
-          "down": -100,
+          "down": -1,
           "up": 0
         },
         "BTN_DPAD_DOWN": {
           "action": "motor",
           "axis": "y",
-          "down": 100,
+          "down": 1,
           "up": 0
         },
         "BTN_DPAD_LEFT": {
           "action": "motor",
           "axis": "x",
-          "down": -100,
+          "down": -1,
           "up": 0
         },
         "BTN_DPAD_RIGHT": {
           "action": "motor",
           "axis": "x",
-          "down": 100,
+          "down": 1,
           "up": 0
         }
       }
@@ -91,6 +90,42 @@
         }
       },
       "key": {
+        "BTN_THUMB": {
+          "action": "light_toggle"
+        },
+        "BTN_TOP": {
+          "action": "toggle_face_detection"
+        },
+        "BTN_TRIGGER": {
+          "action": "patrol"
+        },
+        "BTN_THUMB2": {
+          "action": "motor_stop"
+        },
+        "BTN_PINKIE": {
+          "action": "sfx_play_bike_horn"
+        },
+        "BTN_TOP2": {
+          "action": "sfx_play_car_double_horn"
+        }
+      }
+    },
+    "default": {
+      "absolute_axis": {
+        "ABS_X": {
+          "action": "motor",
+          "axis": "x"
+        },
+        "ABS_Y": {
+          "action": "motor",
+          "axis": "y"
+        },
+        "ABS_RY": {
+          "action": "camera",
+          "axis": "y"
+        }
+      },
+      "button": {
         "BTN_THUMB": {
           "action": "light_toggle"
         },

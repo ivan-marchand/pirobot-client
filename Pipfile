@@ -6,8 +6,8 @@ name = "pypi"
 [packages]
 pyqt5 = "*"
 opencv-python-headless = "*"
-evdev = "*"
 pyinstaller = "*"
+pygame = "*"
 
 [dev-packages]
 

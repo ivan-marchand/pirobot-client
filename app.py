@@ -286,8 +286,9 @@ class App(QMainWindow):
 
     def start_gamepad(self):
         callback = {
-            "absolute_axis": self.client.gamepad_absolute_axis_callback,
-            "key": self.client.gamepad_key_callback
+            "axis_motion": self.client.gamepad_absolute_axis_callback,
+            "button": self.client.gamepad_button_callback,
+            "hat_motion": self.client.gamepad_hat_callback,
         }
         self.gamepad_thread = threading.Thread(target=GamePad.start_loop, kwargs=dict(callback=callback), daemon=True)
         self.gamepad_thread.start()

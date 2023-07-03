@@ -21,7 +21,6 @@ class Client(object):
         self.actions = {}
         self.controller_mapping = {}
         self.axis_mapping = {}
-        self.absolute_axis_positions = {}
         self.axis_positions = {}
         if not os.path.isdir(self.config_path):
             self.config_path = "/etc/piremote/config"
@@ -42,12 +41,12 @@ class Client(object):
                 for device_name, gamepad_config in self.controller_mapping.get("gamepad").items():
                     gamepad_absolute_mapping = gamepad_config.get("absolute_axis", {})
                     gamepad_config["axis_mapping"] = {}
-                    for code, config in gamepad_absolute_mapping.items():
-                        action, axis = config["action"], config["axis"]
+                    for axis, config in gamepad_absolute_mapping.items():
+                        action, action_axis = config["action"], config["axis"]
                         if action not in gamepad_config["axis_mapping"]:
                             gamepad_config["axis_mapping"][action] = {}
-                        gamepad_config["axis_mapping"][action][axis] = config
-                        gamepad_config["axis_mapping"][action][axis]["code"] = code
+                        gamepad_config["axis_mapping"][action][action_axis] = config
+                        gamepad_config["axis_mapping"][action][action_axis]["axis"] = axis
 
     def run_action(self, action_id):
         if action_id == "app_close":
@@ -115,41 +114,33 @@ class Client(object):
             except:
                 continue
 
-    def get_gamepad_config(self):
-        if GamePad.gamepad is not None and GamePad.gamepad.device is not None:
-            return self.controller_mapping.get("gamepad", {}).get(GamePad.gamepad.device.name.strip(), {})
+    def get_gamepad_config(self, joystick):
+        guid = joystick.get_guid()
+        gamepad_mapping = self.controller_mapping.get("gamepad", {})
+        if guid in gamepad_mapping:
+            return gamepad_mapping[guid]
         else:
-            print("Not gamepad connect")
-            return {}
+            return gamepad_mapping["default"]
 
-    def gamepad_absolute_axis_callback(self, axis, position):
-        self.absolute_axis_positions[axis] = position
-        gamepad_absolute_mapping = self.get_gamepad_config().get("absolute_axis", {})
-        if axis in gamepad_absolute_mapping:
-            action = gamepad_absolute_mapping[axis]["action"]
-            axis_mapping = self.get_gamepad_config().get("axis_mapping", {})
+    def gamepad_absolute_axis_callback(self, joystick, axis):
+        gamepad_config = self.get_gamepad_config(joystick)
+        gamepad_absolute_mapping = gamepad_config.get("absolute_axis", {})
+        axis_str = str(axis)
+        if axis_str in gamepad_absolute_mapping:
+            action = gamepad_absolute_mapping[axis_str]["action"]
+            axis_mapping = gamepad_config.get("axis_mapping", {})
             if action in axis_mapping:
-                x_pos = self.get_normalized_position(action, "x")
-                y_pos = self.get_normalized_position(action, "y")
-                self.axis_positions[action] = {"x": x_pos, "y": y_pos}
-                self.run_axis_action(action)
+                x_pos = joystick.get_axis(int(axis_mapping[action]["x"]["axis"])) if "x" in axis_mapping[action] else 0.0
+                y_pos = joystick.get_axis(int(axis_mapping[action]["y"]["axis"])) if "y" in axis_mapping[action] else 0.0
+                self.run_axis_action(action, x_pos, y_pos)
 
-    def get_normalized_position(self, action, axis):
-        axis_mapping = self.get_gamepad_config().get("axis_mapping")
-        if axis not in axis_mapping[action]:
-            return 0
-        code = axis_mapping[action][axis]["code"]
-        positions = {str(code): value for code, value in self.absolute_axis_positions.items()}
-        if code not in positions:
-            return 0
-        absolute_position = positions[code]["value"]
-        max_pos = axis_mapping[action][axis].get("max", positions[code]["max"])
-        min_pos = axis_mapping[action][axis].get("min", positions[code]["min"])
-        value_normalized = float(absolute_position - min_pos) / float(max_pos - min_pos)
-        value_normalized = int(-100 + (value_normalized * 200))
-        value_normalized = min(100, value_normalized)
-        value_normalized = max(-100, value_normalized)
-        return value_normalized
+    def gamepad_hat_callback(self, joystick, hat, x_pos, y_pos):
+        gamepad_config = self.get_gamepad_config(joystick)
+        hat_mapping = gamepad_config.get("hat", {})
+        hat_str = str(hat)
+        if hat_str in hat_mapping:
+            action = hat_mapping[hat_str]["action"]
+            self.run_axis_action(action, x_pos, -y_pos)
 
     def move_camera(self, x_pos, y_pos):
         if abs(y_pos) < 2:
@@ -190,39 +181,31 @@ class Client(object):
                                                                           auto_stop=False,
                                                                           )))
 
-    def run_axis_action(self, action):
-            x_pos = self.axis_positions.get(action, {}).get("x", 0)
-            y_pos = self.axis_positions.get(action, {}).get("y", 0)
-            if action == "motor":
-                self.move_motor(x_pos, y_pos)
-            elif action == "camera":
-                self.move_camera(x_pos, y_pos)
+    def run_axis_action(self, action, x_pos, y_pos):
+        x_pos_percent = int(x_pos * 100)
+        y_pos_percent = int(y_pos * 100)
+        if action == "motor":
+            self.move_motor(x_pos_percent, y_pos_percent)
+        elif action == "camera":
+            self.move_camera(x_pos_percent, y_pos_percent)
 
-    def gamepad_key_callback(self, key, down):
-        key_str, code = key
-        if not isinstance(key_str, list):
-            key_str = [key_str]
-        key_str.append(str(code))
-        gamepad_key_mapping = self.get_gamepad_config().get("key", {})
-        found = False
-        for k in key_str:
-            if k in gamepad_key_mapping:
-                found = True
-                key_config = gamepad_key_mapping[k]
-                if "action" in key_config:
-                    action = key_config["action"]
-                    if "axis" in key_config:
-                        axis = key_config["axis"]
-                        if action not in self.axis_positions:
-                            self.axis_positions[action] = {"x": 0, "y": 0}
-                        self.axis_positions[action][axis] = key_config["down"] if down else key_config["up"]
-                        self.run_axis_action(action)
-                    elif down:
-                        self.run_action(action)
-                break
-
-        if not found:
-            print(f"Key not mapped {key}")
+    def gamepad_button_callback(self, joystick, button, down):
+        gamepad_button_mapping = self.get_gamepad_config(joystick).get("button", {})
+        button_str = str(button)  # Convert to string, as config is in json
+        if button_str in gamepad_button_mapping:
+            button_config = gamepad_button_mapping[button_str]
+            if "action" in button_config:
+                action = button_config["action"]
+                if "axis" in button_config:
+                    axis = button_config["axis"]
+                    if action not in self.axis_positions:
+                        self.axis_positions[action] = {"x": 0.0, "y": 0.0}
+                    self.axis_positions[action][axis] = float(button_config["down"]) if down else float(button_config["up"])
+                    self.run_axis_action(action, self.axis_positions[action]["x"], self.axis_positions[action]["y"])
+                elif down:
+                    self.run_action(action)
+        else:
+            print(f"Button not mapped {button}")
 
     def send_message(self, message):
         try:
@@ -233,9 +216,6 @@ class Client(object):
                 print("Unable to send message, reconnect")
                 self.connect(self.host_ip, self.port)
                 self.socket.sendall(json.dumps(message).encode() + b"\n")
-
-    def button_callback(self, action_id):
-        self.run_action(action_id)
 
     def play_message(self, message, destination="lcd"):
         socket_message = {
@@ -263,7 +243,7 @@ class Client(object):
                     if action not in self.axis_positions:
                         self.axis_positions[action] = {"x": 0, "y": 0}
                     self.axis_positions[action][axis] = key_config["down"] if down else key_config["up"]
-                    self.run_axis_action(action)
+                    self.run_axis_action(action, self.axis_positions[action]["x"], self.axis_positions[action]["y"])
                 elif down:
                     self.run_action(action)
         else:
