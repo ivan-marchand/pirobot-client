@@ -1,112 +1,210 @@
 {
-  "motor_stop": [
-    {
-      "type": "motor",
-      "action": "stop"
-    }
-  ],
-  "patrol": [
-    {
-      "type": "motor",
-      "action": "patrol"
-    },
-    {
-      "type": "lcd",
-      "action": "display_picture",
-      "args": {
-        "name": "patrol"
+  "motor_stop": {
+    "name": "Stop Robot",
+    "category": "robot",
+    "description": "Stop the Robot",
+    "commands": [
+      {
+        "type": "motor",
+        "action": "stop"
       }
-    }
-  ],
-  "light_toggle": [
-    {
-      "type": "light",
-      "action": "toggle"
-    }
-  ],
-  "left_blink": [
-    {
-      "type": "light",
-      "action": "blink",
-      "args": {
-        "left_on": true,
-        "right_on": false
+    ]
+  },
+  "patrol": {
+    "category": "robot",
+    "commands": [
+      {
+        "type": "motor",
+        "action": "patrol"
+      },
+      {
+        "type": "lcd",
+        "action": "display_picture",
+        "args": {
+          "name": "patrol"
+        }
       }
-    },
-    {
-      "type": "sfx",
-      "action": "play",
-      "args": {
-        "name": "blinker"
+    ]
+  },
+  "light_toggle": {
+    "category": "light",
+    "needs": "light",
+    "commands": [
+      {
+        "type": "light",
+        "action": "toggle"
       }
-    }
-  ],
-  "right_blink": [
-    {
-      "type": "light",
-      "action": "blink",
-      "args": {
-        "left_on": false,
-        "right_on": true
+    ]
+  },
+  "left_blink": {
+    "category": "light",
+    "needs": "light",
+    "commands": [
+      {
+        "type": "light",
+        "action": "blink",
+        "args": {
+          "left_on": true,
+          "right_on": false
+        }
+      },
+      {
+        "type": "sfx",
+        "action": "play",
+        "args": {
+          "name": "blinker"
+        }
       }
-    },
-    {
-      "type": "sfx",
-      "action": "play",
-      "args": {
-        "name": "blinker"
+    ]
+  },
+  "right_blink": {
+    "category": "light",
+    "needs": "light",
+    "commands": [
+      {
+        "type": "light",
+        "action": "blink",
+        "args": {
+          "left_on": false,
+          "right_on": true
+        }
+      },
+      {
+        "type": "sfx",
+        "action": "play",
+        "args": {
+          "name": "blinker"
+        }
       }
-    }
-  ],
-  "sfx_play_blinker": [
-    {
-      "type": "sfx",
-      "action": "play",
-      "args": {
-        "name": "blinker"
+    ]
+  },
+  "sfx_play_bike_horn": {
+    "category": "sfx",
+    "name": "Bike Horn",
+    "needs": "speaker",
+    "commands": [
+      {
+        "type": "sfx",
+        "action": "play",
+        "args": {
+          "name": "bike_horn"
+        }
       }
-    }
-  ],
-  "sfx_play_bike_horn": [
-    {
-      "type": "sfx",
-      "action": "play",
-      "args": {
-        "name": "bike_horn"
+    ]
+  },
+  "sfx_play_car_double_horn": {
+    "category": "sfx",
+    "name": "Car double horn",
+    "needs": "speaker",
+    "commands": [
+      {
+        "type": "sfx",
+        "action": "play",
+        "args": {
+          "name": "car_double_horn"
+        }
       }
-    }
-  ],
-  "sfx_play_car_double_horn": [
-    {
-      "type": "sfx",
-      "action": "play",
-      "args": {
-        "name": "car_double_horn"
+    ]
+  },
+  "sfx_play_animal_yay": {
+    "category": "sfx",
+    "name": "Animal yay",
+    "needs": "speaker",
+    "commands": [
+      {
+        "type": "sfx",
+        "action": "play",
+        "args": {
+          "name": "animal-yay"
+        }
       }
-    }
-  ],
-  "sfx_play_animal_yay": [
-    {
-      "type": "sfx",
-      "action": "play",
-      "args": {
-        "name": "animal-yay"
+    ]
+  },
+  "sfx_play_pet_squeak_toy": {
+    "category": "sfx",
+    "name": "Squeak toy",
+    "needs": "speaker",
+    "commands": [
+      {
+        "type": "sfx",
+        "action": "play",
+        "args": {
+          "name": "pet-squeak-toy"
+        }
       }
-    }
-  ],
-  "sfx_play_pet_squeak_toy": [
-    {
-      "type": "sfx",
-      "action": "play",
-      "args": {
-        "name": "pet-squeak-toy"
+    ]
+  },
+  "toggle_face_detection": {
+    "category": "robot",
+    "commands": [
+      {
+        "type": "camera",
+        "action": "toggle_face_detection"
       }
-    }
-  ],
-  "toggle_face_detection": [
-    {
-      "type": "camera",
-      "action": "toggle_face_detection"
-    }
-  ]
+    ]
+  },
+  "camera_up": {
+    "category": "camera",
+    "needs": "camera_servo",
+    "axis_group": "camera",
+    "hat_group": "camera",
+    "description": "Move camera up"
+  },
+  "camera_down": {
+    "category": "camera",
+    "needs": "camera_servo",
+    "axis_group": "camera",
+    "hat_group": "camera",
+    "description": "Move camera down"
+  },
+  "app_close": {
+    "name": "Quit",
+    "category": "program",
+    "description": "Quit the application"
+  },
+  "say_message": {
+    "name": "Say something",
+    "category": "robot",
+    "needs": "speaker",
+    "description": "Open dialog to send voice message"
+  },
+  "display_message": {
+    "name": "Display Message",
+    "category": "robot",
+    "needs": "screen",
+    "description": "Open dialog to display a message on the screen"
+  },
+  "motor_slow_mode": {
+    "name": "Slow motion",
+    "category": "robot",
+    "description": "Toggle Robot slow motion mode"
+  },
+  "drive_forward": {
+    "name": "Drive Forward",
+    "category": "drive",
+    "description": "Move robot forward",
+    "axis_group": "drive",
+    "hat_group": "drive"
+  },
+  "drive_backward": {
+    "name": "Drive Forward",
+    "category": "drive",
+    "description": "Move robot forward",
+    "axis_group": "drive",
+    "hat_group": "drive"
+  },
+  "drive_left": {
+    "name": "Turn left",
+    "category": "drive",
+    "description": "Turn robot to the left",
+    "axis_group": "turn",
+    "hat_group": "drive"
+  },
+  "drive_right": {
+    "name": "Turn right",
+    "category": "drive",
+    "description": "Turn robot to the right",
+    "axis_group": "turn",
+    "hat_group": "drive"
+  }
 }

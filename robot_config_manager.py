@@ -20,7 +20,7 @@ class ConfigLayout(QGridLayout):
         self.row += 1
 
 
-class ConfigManagerPopup(QDialog):
+class RobotConfigManagerPopup(QDialog):
     new_config_signal = pyqtSignal(dict)
 
     def __init__(self, client):

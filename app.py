@@ -10,11 +10,11 @@ import numpy as np
 import socket
 import struct
 import time
-import threading
 
 from gamepad import GamePad
 from client import Client
-from config_manager import ConfigManagerPopup
+from input_config_manager import InputConfigManagerPopup
+from robot_config_manager import RobotConfigManagerPopup
 
 
 class VideoThread(QThread):
@@ -178,6 +178,7 @@ class App(QMainWindow):
         self.setWindowTitle("PiRobot Remote Control")
 
         self.robot_name = "PiRobot"
+        self.robot_config = {}
         self.resize(800, 600)
         self.create_menu_bar()
         if full_screen:
@@ -236,8 +237,14 @@ class App(QMainWindow):
         # Robot config
         robot_config_action = QAction(self)
         robot_config_action.setText("Robot Configuration")
-        robot_config_action.triggered.connect(self.open_config_manager)
+        robot_config_action.triggered.connect(self.open_robot_config_manager)
         setting_menu.addAction(robot_config_action)
+
+        # Robot config
+        input_config_action = QAction(self)
+        input_config_action.setText("Input Device Configuration")
+        input_config_action.triggered.connect(self.open_input_config_manager)
+        setting_menu.addAction(input_config_action)
 
         menu_bar.addMenu(setting_menu)
 
@@ -246,6 +253,7 @@ class App(QMainWindow):
             self.hostname = hostname
             host_ip = socket.gethostbyname(self.hostname)
             self.client = Client(self)
+            self.client.register_consumer("status", self.robot_init_callback)
             self.client.connect(host_ip, self.server_port)
             # create the video capture thread
             if self.video_thread is not None:
@@ -253,20 +261,27 @@ class App(QMainWindow):
             self.video_thread = VideoThread(host_ip, self.video_server_port)
             # connect its signal to the update_image slot
             self.video_thread.change_pixmap_signal.connect(self.update_image)
-            # start the thread
+            # Start the video thread
             self.video_thread.start()
             # GamePad
-            if self.gamepad_thread is not None:
-                self.stop_gamepad()
             self.start_gamepad()
+            # Status bar
             self.update_status_bar()
-            self.client.register_consumer("status", self.robot_init_callback)
         except:
             traceback.print_exc()
             self.open_select_host_window(f"Unable to connect to {self.hostname}")
 
+    def start_gamepad(self):
+        callback = {
+            "axis_motion": self.client.gamepad_absolute_axis_callback,
+            "button": self.client.gamepad_button_callback,
+            "hat_motion": self.client.gamepad_hat_callback,
+        }
+        GamePad.start_gamepad(callback=callback)
+
     def robot_init_callback(self, message):
         self.robot_name = message["robot_name"]
+        self.robot_config = message["config"]
         self.update_status_bar()
 
     def open_select_host_window(self, message=None):
@@ -279,24 +294,17 @@ class App(QMainWindow):
             self.popups["play_message"] = PlayMessagePopup(callback=self.client.play_message, destination=destination)
             self.popups["play_message"].show()
 
-    def open_config_manager(self):
-        if "config_manager" not in self.popups or not self.popups["config_manager"].isVisible():
-            self.popups["config_manager"] = ConfigManagerPopup(client=self.client)
-            self.popups["config_manager"].show()
+    def open_robot_config_manager(self):
+        if "robot_config_manager" not in self.popups or not self.popups["robot_config_manager"].isVisible():
+            self.popups["robot_config_manager"] = RobotConfigManagerPopup(client=self.client)
+            self.popups["robot_config_manager"].show()
 
-    def start_gamepad(self):
-        callback = {
-            "axis_motion": self.client.gamepad_absolute_axis_callback,
-            "button": self.client.gamepad_button_callback,
-            "hat_motion": self.client.gamepad_hat_callback,
-        }
-        self.gamepad_thread = threading.Thread(target=GamePad.start_loop, kwargs=dict(callback=callback), daemon=True)
-        self.gamepad_thread.start()
-
-    def stop_gamepad(self):
-        if self.gamepad_thread is not None:
-            GamePad.stop_loop()
-            self.gamepad_thread = None
+    def open_input_config_manager(self):
+        if "input_config_manager" not in self.popups or not self.popups["input_config_manager"].isVisible():
+            self.popups["input_config_manager"] = InputConfigManagerPopup(
+                robot_config=self.robot_config, close_callback=self.start_gamepad
+            )
+            self.popups["input_config_manager"].show()
 
     @pyqtSlot(np.ndarray)
     def update_image(self, cv_img):

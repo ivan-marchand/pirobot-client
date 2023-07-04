@@ -6,8 +6,6 @@ import threading
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QKeySequence
 
-from gamepad import GamePad
-
 
 class Client(object):
 
@@ -51,14 +49,10 @@ class Client(object):
     def run_action(self, action_id):
         if action_id == "app_close":
             self.app.close()
-        elif action_id == "select_host":
-            self.app.open_select_host_window()
         elif action_id == "say_message":
             self.app.open_play_message_window(destination="audio")
         elif action_id == "display_message":
             self.app.open_play_message_window(destination="lcd")
-        elif action_id == "config_manager":
-            self.app.open_config_manager()
         elif action_id == "motor_slow_mode":
             self.motor_slow_mode = not self.motor_slow_mode
         elif action_id in self.actions:
