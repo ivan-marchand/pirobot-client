@@ -1,15 +1,15 @@
-import traceback
-
-from PyQt5 import QtGui
-from PyQt5.QtWidgets import QAction, QHBoxLayout, QLabel, QMenu, QPushButton, QDialog, QMainWindow, QLineEdit, QStatusBar, QVBoxLayout
-from PyQt5.QtGui import QPixmap
-from PyQt5.QtCore import pyqtSignal, pyqtSlot, Qt, QThread
-
 import cv2
 import numpy as np
 import socket
 import struct
 import time
+import traceback
+from functools import partial
+
+from PyQt5 import QtGui
+from PyQt5.QtWidgets import QAction, QDialog, QHBoxLayout, QLabel, QMenu, QPushButton, QMainWindow, QLineEdit, QStatusBar, QVBoxLayout
+from PyQt5.QtGui import QPixmap
+from PyQt5.QtCore import pyqtSignal, pyqtSlot, Qt, QThread
 
 from gamepad import GamePad
 from client import Client
@@ -95,6 +95,33 @@ class ImageLabel(QLabel):
         print(event.pos())
 
 
+class GamepadAddedPopup(QDialog):
+    def __init__(self, callback):
+        super().__init__()
+        self.setWindowTitle("New gamepad detected")
+        self.setGeometry(50, 50, 500, 100)
+        self.callback = callback
+
+        vbox = QVBoxLayout()
+        vbox.addWidget(QLabel("Do you want to configure the new gamepad?"))
+        hbox = QHBoxLayout()
+        no_button = QPushButton("No")
+        no_button.clicked.connect(self.close)
+        hbox.addWidget(no_button)
+        yes_button = QPushButton("Yes")
+        yes_button.setDefault(True)
+        yes_button.setFocus()
+        yes_button.clicked.connect(self.configure_gamepad)
+        hbox.addWidget(yes_button)
+
+        vbox.addLayout(hbox)
+        self.setLayout(vbox)
+
+    def configure_gamepad(self):
+        self.callback()
+        self.close()
+
+
 class ConnectToHostPopup(QDialog):
     def __init__(self, callback, message=None):
         super().__init__()
@@ -171,6 +198,8 @@ class PlayMessagePopup(QDialog):
 
 
 class App(QMainWindow):
+    gamepad_added_signal = pyqtSignal("PyQt_PyObject")
+
     def __init__(self, hostname, server_port, video_server_port, full_screen):
         super().__init__()
 
@@ -195,7 +224,6 @@ class App(QMainWindow):
         self.setStatusBar(self.status_bar)
 
         # Connect to Host
-        self.client = Client(self)
         self.hostname = hostname
         self.server_port = server_port
         self.video_server_port = video_server_port
@@ -206,20 +234,23 @@ class App(QMainWindow):
         else:
             self.connect_to_host(self.hostname)
         self.update_status_bar()
+        self.gamepad_added_signal.connect(self.gamepad_added_callback)
+        self.new_gamepad = set()
 
     def closeEvent(self,event):
         for popup in self.popups.values():
             if popup.isVisible():
                 popup.close()
+        GamePad.stop_gamepad()
 
     def update_status_bar(self):
         # Update status bar
-        if not self.client.is_connected():
-            status_message = "Connecting..."
-        else:
+        if self.client is not None and self.client.is_connected():
             status_message = f"Connected to {self.hostname} | {self.robot_name}"
             if self.video_thread is not None:
                 status_message += f" | FPS: {self.video_thread.fps}"
+        else:
+            status_message = "Connecting..."
 
         self.status_bar.showMessage(status_message)
 
@@ -243,7 +274,7 @@ class App(QMainWindow):
         # Robot config
         input_config_action = QAction(self)
         input_config_action.setText("Input Device Configuration")
-        input_config_action.triggered.connect(self.open_input_config_manager)
+        input_config_action.triggered.connect(lambda e: self.open_input_config_manager())
         setting_menu.addAction(input_config_action)
 
         menu_bar.addMenu(setting_menu)
@@ -252,7 +283,7 @@ class App(QMainWindow):
         try:
             self.hostname = hostname
             host_ip = socket.gethostbyname(self.hostname)
-            self.client = Client(self)
+            self.client = Client(app=self, robot_config=self.robot_config)
             self.client.register_consumer("status", self.robot_init_callback)
             self.client.connect(host_ip, self.server_port)
             # create the video capture thread
@@ -276,6 +307,7 @@ class App(QMainWindow):
             "axis_motion": self.client.gamepad_absolute_axis_callback,
             "button": self.client.gamepad_button_callback,
             "hat_motion": self.client.gamepad_hat_callback,
+            "joystick_added": self.gamepad_added_signal.emit,
         }
         GamePad.start_gamepad(callback=callback)
 
@@ -299,12 +331,18 @@ class App(QMainWindow):
             self.popups["robot_config_manager"] = RobotConfigManagerPopup(client=self.client)
             self.popups["robot_config_manager"].show()
 
-    def open_input_config_manager(self):
+    def open_input_config_manager(self, joystick=None):
         if "input_config_manager" not in self.popups or not self.popups["input_config_manager"].isVisible():
             self.popups["input_config_manager"] = InputConfigManagerPopup(
-                robot_config=self.robot_config, close_callback=self.start_gamepad
+                robot_config=self.robot_config,
+                close_callback=self.reload_input_device_config,
+                selected_joystick=joystick
             )
             self.popups["input_config_manager"].show()
+
+    def reload_input_device_config(self):
+        self.start_gamepad()
+        self.client.input_config_manager.load()
 
     @pyqtSlot(np.ndarray)
     def update_image(self, cv_img):
@@ -322,6 +360,14 @@ class App(QMainWindow):
         convert_to_Qt_format = QtGui.QImage(rgb_image.data, w, h, bytes_per_line, QtGui.QImage.Format_RGB888)
         p = convert_to_Qt_format.scaled(w, h, Qt.KeepAspectRatio)
         return QPixmap.fromImage(p)
+
+    def gamepad_added_callback(self, joystick):
+        if not self.client.input_config_manager.is_configured(joystick) and joystick.get_guid() not in self.new_gamepad:
+            if "gamepad_added" not in self.popups or not self.popups["gamepad_added"].isVisible():
+                self.popups["gamepad_added"] = GamepadAddedPopup(
+                    callback=partial(self.open_input_config_manager, joystick)
+                )
+                self.popups["gamepad_added"].show()
 
     def keyPressEvent(self, e):
         if not e.isAutoRepeat():

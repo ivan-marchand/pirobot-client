@@ -1,7 +1,7 @@
 {
   "motor_stop": {
     "name": "Stop Robot",
-    "category": "robot",
+    "group": "robot",
     "description": "Stop the Robot",
     "commands": [
       {
@@ -11,7 +11,7 @@
     ]
   },
   "patrol": {
-    "category": "robot",
+    "group": "robot",
     "commands": [
       {
         "type": "motor",
@@ -27,7 +27,7 @@
     ]
   },
   "light_toggle": {
-    "category": "light",
+    "group": "light",
     "needs": "light",
     "commands": [
       {
@@ -37,7 +37,7 @@
     ]
   },
   "left_blink": {
-    "category": "light",
+    "group": "light",
     "needs": "light",
     "commands": [
       {
@@ -58,7 +58,7 @@
     ]
   },
   "right_blink": {
-    "category": "light",
+    "group": "light",
     "needs": "light",
     "commands": [
       {
@@ -79,7 +79,7 @@
     ]
   },
   "sfx_play_bike_horn": {
-    "category": "sfx",
+    "group": "sfx",
     "name": "Bike Horn",
     "needs": "speaker",
     "commands": [
@@ -93,7 +93,7 @@
     ]
   },
   "sfx_play_car_double_horn": {
-    "category": "sfx",
+    "group": "sfx",
     "name": "Car double horn",
     "needs": "speaker",
     "commands": [
@@ -107,7 +107,7 @@
     ]
   },
   "sfx_play_animal_yay": {
-    "category": "sfx",
+    "group": "sfx",
     "name": "Animal yay",
     "needs": "speaker",
     "commands": [
@@ -121,7 +121,7 @@
     ]
   },
   "sfx_play_pet_squeak_toy": {
-    "category": "sfx",
+    "group": "sfx",
     "name": "Squeak toy",
     "needs": "speaker",
     "commands": [
@@ -135,7 +135,7 @@
     ]
   },
   "toggle_face_detection": {
-    "category": "robot",
+    "group": "robot",
     "commands": [
       {
         "type": "camera",
@@ -144,14 +144,14 @@
     ]
   },
   "camera_up": {
-    "category": "camera",
+    "group": "camera",
     "needs": "camera_servo",
     "axis_group": "camera",
     "hat_group": "camera",
     "description": "Move camera up"
   },
   "camera_down": {
-    "category": "camera",
+    "group": "camera",
     "needs": "camera_servo",
     "axis_group": "camera",
     "hat_group": "camera",
@@ -159,50 +159,62 @@
   },
   "app_close": {
     "name": "Quit",
-    "category": "program",
+    "group": "program",
     "description": "Quit the application"
   },
   "say_message": {
     "name": "Say something",
-    "category": "robot",
+    "group": "robot",
     "needs": "speaker",
     "description": "Open dialog to send voice message"
   },
   "display_message": {
     "name": "Display Message",
-    "category": "robot",
+    "group": "robot",
     "needs": "screen",
     "description": "Open dialog to display a message on the screen"
   },
   "motor_slow_mode": {
     "name": "Slow motion",
-    "category": "robot",
+    "group": "robot",
     "description": "Toggle Robot slow motion mode"
   },
   "drive_forward": {
     "name": "Drive Forward",
-    "category": "drive",
+    "group": "drive",
+    "axis_name": "y",
+    "down_value": -1.0,
+    "up_value": 0.0,
     "description": "Move robot forward",
     "axis_group": "drive",
     "hat_group": "drive"
   },
   "drive_backward": {
     "name": "Drive Forward",
-    "category": "drive",
+    "group": "drive",
+    "axis_name": "y",
+    "down_value": 1.0,
+    "up_value": 0.0,
     "description": "Move robot forward",
     "axis_group": "drive",
     "hat_group": "drive"
   },
   "drive_left": {
     "name": "Turn left",
-    "category": "drive",
+    "group": "drive",
+    "axis_name": "x",
+    "down_value": -1.0,
+    "up_value": 0.0,
     "description": "Turn robot to the left",
     "axis_group": "turn",
     "hat_group": "drive"
   },
   "drive_right": {
     "name": "Turn right",
-    "category": "drive",
+    "group": "drive",
+    "axis_name": "x",
+    "down_value": 1.0,
+    "up_value": 0.0,
     "description": "Turn robot to the right",
     "axis_group": "turn",
     "hat_group": "drive"

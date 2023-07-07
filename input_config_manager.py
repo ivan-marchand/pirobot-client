@@ -42,6 +42,15 @@ class InputConfigManager(object):
 
         self.load()
 
+    def is_configured(self, joystick):
+        return joystick.get_guid() in self.gamepad_mapping
+
+    def get_action_config(self, action):
+        return self.actions.get(action)
+
+    def get_commands_for_action(self, action):
+        return self.actions.get(action, {}).get("commands", [])
+
     def get_keyboard_event_for_action(self, action):
         if action in self.keyboard_mapping:
             return self.keyboard_mapping[action]
@@ -54,18 +63,22 @@ class InputConfigManager(object):
                 return action
         return None
 
-    def get_gamepad_event_for_action(self, action, joystick):
+    def get_axis_group_for_keyboard_key(self, key):
+        return self.get_action_for_keyboard_event({"type": "key", "key": key})
+
+    def get_gamepad_events_for_action(self, action, joystick):
+        events = []
         guid = joystick.get_guid()
         if guid in self.gamepad_mapping:
             axis_group = self.actions.get(action, {}).get("axis_group")
             hat_group = self.actions.get(action, {}).get("hat_group")
             if axis_group is not None and axis_group in self.gamepad_mapping[guid]["axis_group"]:
-                return self.gamepad_mapping[guid]["axis_group"][axis_group]
-            elif hat_group is not None and hat_group in self.gamepad_mapping[guid]["hat_group"]:
-                return self.gamepad_mapping[guid]["hat_group"][hat_group]
-            else:
-                return self.gamepad_mapping[guid]["actions"].get(action)
-        return None
+                events.append(self.gamepad_mapping[guid]["axis_group"][axis_group])
+            if hat_group is not None and hat_group in self.gamepad_mapping[guid]["hat_group"]:
+                events.append(self.gamepad_mapping[guid]["hat_group"][hat_group])
+            if action in self.gamepad_mapping[guid]["actions"]:
+                events.append(self.gamepad_mapping[guid]["actions"][action])
+        return events
 
     @staticmethod
     def keyboard_event_to_string(event):
@@ -88,11 +101,11 @@ class InputConfigManager(object):
         if event is not None:
             event_type = event["type"]
             if event_type == "button":
-                return str(event["button"])
+                return f"B{event['button']}"
             elif event_type == "axis":
-                return f"Axis {event['axis']}"
+                return f"A{event['axis']}"
             elif event_type == "hat":
-                return f"Hat {event['hat']}"
+                return f"H{event['hat']}"
 
         return "N/A"
 
@@ -103,6 +116,10 @@ class InputConfigManager(object):
             del self.keyboard_mapping[existing_action]
         self.keyboard_mapping[action] = event
 
+    def reset_keyboard_event_for_action(self, action):
+        if action in self.keyboard_mapping:
+            del self.keyboard_mapping[action]
+
     def get_action_for_gamepad_event(self, joystick, event):
         guid = joystick.get_guid()
         if guid in self.gamepad_mapping:
@@ -110,6 +127,9 @@ class InputConfigManager(object):
                 if action_event == event:
                     return action
         return None
+
+    def get_action_for_gamepad_button(self, joystick, button):
+        return self.get_action_for_gamepad_event(joystick, {"type": "button", "button": button})
 
     def get_axis_group_for_gamepad_event(self, joystick, event):
         guid = joystick.get_guid()
@@ -127,60 +147,47 @@ class InputConfigManager(object):
                     return hat_group
         return None
 
-    def reset_gamepad_event_for_action(self, action, joystick, event):
+    def get_axis_position_for_group(self, joystick, group):
         guid = joystick.get_guid()
-        event_type = event["type"]
-        actions_to_reset = set()
-        actions_to_reset.add(action)
-        axis_group_to_reset = set()
-        hat_group_to_reset = set()
+        position = {}
+        if guid in self.gamepad_mapping:
+            for action_config in self.actions.values():
+                if group is not None and action_config.get("group") == group:
+                    axis_name = action_config.get("axis_name")
+                    axis_group = action_config.get("axis_group")
+                    if axis_name is not None and axis_group is not None and axis_name not in position:
+                        axis = self.gamepad_mapping[guid]["axis_group"].get(axis_group, {}).get("axis")
+                        if axis is not None:
+                            position[axis_name] = joystick.get_axis(axis)
 
-        # Event already used for an action?axis_group_for_gamepad_event
-        actions_to_reset.add(self.get_action_for_gamepad_event(joystick, event))
+        return position
 
-        # Even already used for axis group?
-        axis_group_to_reset.add(self.get_axis_group_for_gamepad_event(joystick, event))
+    def get_group_for_axis(self, joystick, axis):
+        guid = joystick.get_guid()
+        axis_group = None
+        if guid in self.gamepad_mapping:
+            for group, axis_group_event in self.gamepad_mapping[guid]["axis_group"].items():
+                if axis_group_event["axis"] == axis:
+                    axis_group = group
 
-        # Even already used for hat group?
-        hat_group_to_reset.add(self.get_hat_group_for_gamepad_event(joystick, event))
-
-        # Is the action part of an axis group?
-        axis_group = self.actions.get(action, {}).get("axis_group")
         if axis_group is not None:
-            # Reset axis group
-            axis_group_to_reset.add(axis_group)
+            for action_config in self.actions.values():
+                if action_config.get("axis_group") == axis_group:
+                    return action_config.get("group")
 
-            # Reset actions from the group
-            if event_type == "axis":
-                for axis_group_action in [a for a, c in self.actions.items() if c.get("axis_group") == axis_group]:
-                    actions_to_reset.add(axis_group_action)
+        return None
 
-        # Is the action part of an hat group?
-        hat_group = self.actions.get(action, {}).get("hat_group")
+    def get_group_for_hat(self, joystick, hat):
+        guid = joystick.get_guid()
+        hat_group = None
+        for group, hat_group_config in self.gamepad_mapping[guid]["hat_group"].items():
+            if hat_group_config["hat"] == hat:
+                hat_group = group
+
         if hat_group is not None:
-            # Reset hat group
-            hat_group_to_reset.add(hat_group)
-
-            # Reset actions from the group
-            if event_type == "hat":
-                for hat_group_action in [a for a, c in self.actions.items() if c.get("hat_group") == hat_group]:
-                    actions_to_reset.add(hat_group_action)
-                    axis_group_to_reset.add(self.actions.get(hat_group_action, {}).get("axis_group"))
-
-        # Reset actions
-        for action in actions_to_reset:
-            if action is not None and action in self.gamepad_mapping[guid]["actions"]:
-                del self.gamepad_mapping[guid]["actions"][action]
-
-        # Reset axis groups
-        for axis_group in axis_group_to_reset:
-            if axis_group is not None and axis_group in self.gamepad_mapping[guid]["axis_group"]:
-                del self.gamepad_mapping[guid]["axis_group"][axis_group]
-
-        # Rest hat groups
-        for hat_group in hat_group_to_reset:
-            if hat_group is not None and hat_group in self.gamepad_mapping[guid]["hat_group"]:
-                del self.gamepad_mapping[guid]["hat_group"][hat_group]
+            for action_config in self.actions.values():
+                if action_config.get("hat_group") == hat_group:
+                    return action_config.get("group")
 
     def set_gamepad_event_for_action(self, action, joystick, event, axis_group=None, hat_group=None):
         guid = joystick.get_guid()
@@ -192,12 +199,21 @@ class InputConfigManager(object):
                 "guid": guid,
                 "name": joystick.get_name(),
             }
-        self.reset_gamepad_event_for_action(action, joystick, event)
+
         if axis_group is not None:
+            existing_axis_group = self.get_axis_group_for_gamepad_event(joystick, event)
+            if existing_axis_group is not None:
+                del self.gamepad_mapping[guid]["axis_group"][existing_axis_group]
             self.gamepad_mapping[guid]["axis_group"][axis_group] = event
         elif hat_group is not None:
+            existing_hat_group = self.get_hat_group_for_gamepad_event(joystick, event)
+            if existing_hat_group is not None:
+                del self.gamepad_mapping[guid]["hat_group"][existing_hat_group]
             self.gamepad_mapping[guid]["hat_group"][hat_group] = event
         else:
+            existing_action = self.get_action_for_gamepad_event(joystick, event)
+            if existing_action is not None:
+                del self.gamepad_mapping[guid]["actions"][existing_action]
             self.gamepad_mapping[guid]["actions"][action] = event
 
     def set_gamepad_button_for_action(self, action, joystick, button):
@@ -212,6 +228,18 @@ class InputConfigManager(object):
         hat_group = self.actions.get(action, {}).get("hat_group")
         if hat_group is not None:
             self.set_gamepad_event_for_action(action, joystick, {"type": "hat", "hat": hat}, hat_group=hat_group)
+
+    def reset_gamepad_event_for_action(self, joystick, action):
+        guid = joystick.get_guid()
+        if guid in self.gamepad_mapping:
+            if action in self.gamepad_mapping[guid]["actions"]:
+                del self.gamepad_mapping[guid]["actions"][action]
+
+            if action in self.gamepad_mapping[guid]["axis_group"]:
+                del self.gamepad_mapping[guid]["axis_group"][action]
+
+            if action in self.gamepad_mapping[guid]["hat_group"]:
+                del self.gamepad_mapping[guid]["hat_group"][action]
 
     def has_capability(self, action):
         action_config = self.actions.get(action)
@@ -230,6 +258,7 @@ class InputConfigManager(object):
             self.actions = json.load(action_file)
 
         # Keyboard config
+        self.keyboard_mapping = {}
         for config_path in [self.user_config_path, self.config_path]:
             config_file_path = os.path.join(config_path, "keyboard.config.json")
             if os.path.isfile(config_file_path):
@@ -242,6 +271,7 @@ class InputConfigManager(object):
                     break
 
         # Gamepad config
+        self.gamepad_mapping = {}
         for filename in os.listdir(self.user_config_path):
             if filename.startswith("gamepad.") and filename.endswith(".config.json"):
                 with open(os.path.join(self.user_config_path, filename)) as config_file:
@@ -272,6 +302,14 @@ class KeyboardCaptureDialog(QDialog):
         self.setWindowTitle(f"Defined key for {action}")
         self.layout = QVBoxLayout(self)
         self.layout.addWidget(QLabel("Press any key..."))
+        reset_button = QPushButton("Reset")
+        reset_button.clicked.connect(self.reset_action)
+        self.layout.addWidget(reset_button)
+
+    def reset_action(self):
+        self.config_manager.reset_keyboard_event_for_action(action=self.action)
+        self.close()
+        self.callback()
 
     def keyPressEvent(self, e):
         self.config_manager.set_keyboard_key_for_action(action=self.action, key=e.key())
@@ -289,7 +327,15 @@ class GamepadCaptureDialog(QDialog):
         self.setWindowTitle(f"Defined key for {action}")
         self.layout = QVBoxLayout(self)
         self.layout.addWidget(QLabel("Press any button..."))
+        reset_button = QPushButton("Reset")
+        reset_button.clicked.connect(self.reset_action)
+        self.layout.addWidget(reset_button)
         InputConfigManagerPopup.register_gamepad_event_listener(self)
+
+    def reset_action(self):
+        self.config_manager.reset_gamepad_event_for_action(action=self.action, joystick=self.joystick)
+        self.close()
+        self.callback()
 
     def button_event_callback(self, joystick, button):
         if joystick.get_guid() == self.joystick.get_guid():
@@ -376,9 +422,7 @@ class AssignedGamepadEventWidget(AssignedEventWidget):
         self.widgets[guid].append(self)
 
     def get_event_name(self):
-        return InputConfigManager.gamepad_event_to_string(
-            self.config_manager.get_gamepad_event_for_action(self.action, self.joystick)
-        )
+        return " ".join([InputConfigManager.gamepad_event_to_string(e) for e in self.config_manager.get_gamepad_events_for_action(self.action, self.joystick)])
 
 
 class SetButtonWidget(QPushButton):
@@ -426,29 +470,29 @@ class InputConfigTab(QWidget):
         self.action_layout = QVBoxLayout()
         action_frame.setLayout(self.action_layout)
 
-        action_by_category = {}
+        action_by_group = {}
         for action, action_config in self.config_manager.actions.items():
             if not self.config_manager.has_capability(action):
                 continue
-            category = action_config.get("category", "unknown")
-            # Skip drive category
-            if category == "drive":
+            group = action_config.get("group", "unknown")
+            # Skip drive group
+            if group == "drive":
                 continue
-            if category not in action_by_category:
-                action_by_category[category] = {}
-            action_by_category[category][action] = action_config
+            if group not in action_by_group:
+                action_by_group[group] = {}
+            action_by_group[group][action] = action_config
 
         action_layout = ConfigLayout()
 
-        for category in action_by_category.keys():
-            category_label = QLabel(category.upper())
-            font = category_label.font()
+        for group in action_by_group.keys():
+            group_label = QLabel(group.upper())
+            font = group_label.font()
             font.setBold(True)
-            category_label.setFont(font)
-            action_layout.addWidget(category_label)
+            group_label.setFont(font)
+            action_layout.addWidget(group_label)
             action_layout.newRow()
 
-            for action, action_config in action_by_category[category].items():
+            for action, action_config in action_by_group[group].items():
                 action_layout.addWidget(QLabel(action_config.get("name", snake_case_to_human(action))))
                 action_layout.addWidget(self.get_assigned_widget(action=action))
                 action_layout.addWidget(SetButtonWidget(partial(self.open_capture_dialog, action)))
@@ -457,6 +501,10 @@ class InputConfigTab(QWidget):
         self.action_layout.addLayout(action_layout)
 
         self.capture_dialog = None
+
+    def closeEvent(self, e):
+        if self.capture_dialog is None or not self.capture_dialog.isVisible():
+            self.capture_dialog.close()
 
     def open_capture_dialog(self, action):
         if self.capture_dialog is None or not self.capture_dialog.isVisible():
@@ -516,10 +564,11 @@ class InputConfigManagerPopup(QDialog):
     def unregister_gamepad_event_listener():
         InputConfigManagerPopup.gamepad_event_listener = None
 
-    def __init__(self, robot_config, close_callback):
+    def __init__(self, robot_config, close_callback, selected_joystick):
         super().__init__()
         self.close_callback = close_callback
         self.robot_config = robot_config
+        self.selected_joystick = selected_joystick
         self.config_manager = InputConfigManager(robot_config=robot_config)
         self.setWindowTitle("Input Device Configuration")
 
@@ -586,6 +635,11 @@ class InputConfigManagerPopup(QDialog):
         gamepad_tab = GamepadConfigTab(joystick=joystick, config_manager=self.config_manager)
         self.gamepad_tabs.append(gamepad_tab)
         self.tabs.addTab(gamepad_tab, joystick.get_name())
+        if self.selected_joystick is not None and joystick.get_guid() == self.selected_joystick.get_guid():
+            self.tabs.setCurrentIndex(self.tabs.indexOf(gamepad_tab))
+        else:
+            # Select keyboard config
+            self.tabs.setCurrentIndex(0)
 
     def gamepad_removed_callback(self, joystick):
         index = None
