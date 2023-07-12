@@ -303,6 +303,7 @@ class KeyboardCaptureDialog(QDialog):
         self.layout = QVBoxLayout(self)
         self.layout.addWidget(QLabel("Press any key..."))
         reset_button = QPushButton("Reset")
+        reset_button.setFocusPolicy(Qt.NoFocus)
         reset_button.clicked.connect(self.reset_action)
         self.layout.addWidget(reset_button)
 
@@ -328,6 +329,7 @@ class GamepadCaptureDialog(QDialog):
         self.layout = QVBoxLayout(self)
         self.layout.addWidget(QLabel("Press any button..."))
         reset_button = QPushButton("Reset")
+        reset_button.setFocusPolicy(Qt.NoFocus)
         reset_button.clicked.connect(self.reset_action)
         self.layout.addWidget(reset_button)
         InputConfigManagerPopup.register_gamepad_event_listener(self)

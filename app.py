@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+import os
 import socket
 import struct
 import time
@@ -7,8 +8,8 @@ import traceback
 from functools import partial
 
 from PyQt5 import QtGui
-from PyQt5.QtWidgets import QAction, QDialog, QHBoxLayout, QLabel, QMenu, QPushButton, QMainWindow, QLineEdit, QStatusBar, QVBoxLayout
-from PyQt5.QtGui import QPixmap
+from PyQt5.QtWidgets import QAction, QCompleter, QDialog, QHBoxLayout, QLabel, QMenu, QPushButton, QMainWindow, QLineEdit, QStatusBar, QVBoxLayout
+from PyQt5.QtGui import QIcon, QPixmap
 from PyQt5.QtCore import pyqtSignal, pyqtSlot, Qt, QThread
 
 from gamepad import GamePad
@@ -88,6 +89,8 @@ class ImageLabel(QLabel):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.setAlignment(Qt.AlignCenter)
+        self.setPixmap(QPixmap("pics/logo.svg"))
 
     def mousePressEvent(self, event):
         print("clicked", event)
@@ -123,7 +126,7 @@ class GamepadAddedPopup(QDialog):
 
 
 class ConnectToHostPopup(QDialog):
-    def __init__(self, callback, message=None):
+    def __init__(self, callback, host_history, selected_hostname, message=None):
         super().__init__()
         self.setWindowTitle("Select Host")
         self.setGeometry(50, 50, 500, 110)
@@ -137,6 +140,10 @@ class ConnectToHostPopup(QDialog):
             vbox.addWidget(label)
 
         host_selector = QLineEdit()
+        if selected_hostname is not None:
+            self.host = selected_hostname
+            host_selector.setText(selected_hostname)
+        host_selector.setCompleter(QCompleter(host_history))
         host_selector.textChanged.connect(self.host_selected)
         vbox.addWidget(host_selector)
 
@@ -172,9 +179,9 @@ class PlayMessagePopup(QDialog):
 
         vbox = QVBoxLayout()
 
-        host_selector = QLineEdit()
-        host_selector.textChanged.connect(self.message_udpated)
-        vbox.addWidget(host_selector)
+        message_input = QLineEdit()
+        message_input.textChanged.connect(self.message_udpated)
+        vbox.addWidget(message_input)
 
         hbox = QHBoxLayout()
         cancel_button = QPushButton("Cancel")
@@ -197,6 +204,45 @@ class PlayMessagePopup(QDialog):
         self.message = value
 
 
+class AboutPopup(QDialog):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle(f"About PiRobot Remote Control")
+        self.setGeometry(50, 50, 300, 110)
+
+        vbox = QVBoxLayout()
+        vbox.setAlignment(Qt.AlignCenter)
+
+        logo_label = QLabel()
+        logo_label.setPixmap(QPixmap("pics/logo.svg").scaledToWidth(400))
+        vbox.addWidget(logo_label)
+
+        prompt = """
+PiRobot Remote Control v1.0
+
+<a href=\"http://pirobot.net\">http://pirobot.net</a>
+
+GNU General Public License v3.0
+
+Written by <a href=\"mailto:ivan@pirobot.net\">Ivan Marchand</a>
+"""
+        for line in prompt.split("\n"):
+            label = QLabel(line)
+            if line.find("</a>") > 0:
+                label.setOpenExternalLinks(True)
+            label.setAlignment(Qt.AlignHCenter)
+            vbox.addWidget(label)
+
+        hbox = QHBoxLayout()
+        ok_button = QPushButton("OK")
+        ok_button.setFixedWidth(100)
+        ok_button.clicked.connect(self.close)
+        hbox.addWidget(ok_button)
+        vbox.addLayout(hbox)
+
+        self.setLayout(vbox)
+
+
 class App(QMainWindow):
     gamepad_added_signal = pyqtSignal("PyQt_PyObject")
 
@@ -205,6 +251,7 @@ class App(QMainWindow):
 
         # Update window title
         self.setWindowTitle("PiRobot Remote Control")
+        self.setWindowIcon(QIcon("pics/logo_small.svg"))
 
         self.robot_name = "PiRobot"
         self.robot_config = {}
@@ -215,6 +262,19 @@ class App(QMainWindow):
             self.showFullScreen()
         self.popups = {}
 
+        # Load the host history
+        self.user_config_path = os.path.join(os.environ["HOME"], ".pirobot-remote")
+        if not os.path.isdir(self.user_config_path):
+            os.makedirs(self.user_config_path)
+        self.history_file_path = os.path.join(self.user_config_path, "host.history")
+        self.host_history = set()
+        if os.path.isfile(self.history_file_path):
+            with open(self.history_file_path) as history_file:
+                for line in history_file.readlines():
+                    line = line.replace("\n", "")
+                    if line:
+                        self.host_history.add(line)
+
         # create the label that holds the image
         self.image_label = ImageLabel(self)
         self.setCentralWidget(self.image_label)
@@ -224,6 +284,7 @@ class App(QMainWindow):
         self.setStatusBar(self.status_bar)
 
         # Connect to Host
+        self.client = None
         self.hostname = hostname
         self.server_port = server_port
         self.video_server_port = video_server_port
@@ -256,6 +317,17 @@ class App(QMainWindow):
 
     def create_menu_bar(self):
         menu_bar = self.menuBar()
+
+        # Creating Settings menu
+        file_menu = QMenu("File", self)
+        # Select host action
+        quit_action = QAction(self)
+        quit_action.setText("Quit")
+        quit_action.triggered.connect(self.close)
+        file_menu.addAction(quit_action)
+
+        menu_bar.addMenu(file_menu)
+
         # Creating Settings menu
         setting_menu = QMenu("Settings", self)
 
@@ -279,6 +351,16 @@ class App(QMainWindow):
 
         menu_bar.addMenu(setting_menu)
 
+        # Creating Help menu
+        help_menu = QMenu("Help", self)
+        # Select host action
+        about_action = QAction(self)
+        about_action.setText("About")
+        about_action.triggered.connect(self.open_about_window)
+        help_menu.addAction(about_action)
+
+        menu_bar.addMenu(help_menu)
+
     def connect_to_host(self, hostname):
         try:
             self.hostname = hostname
@@ -298,9 +380,15 @@ class App(QMainWindow):
             self.start_gamepad()
             # Status bar
             self.update_status_bar()
+            # Update history file
+            self.host_history.add(hostname)
+            with open(self.history_file_path, "w") as history_file:
+                for host in self.host_history:
+                    history_file.write(host + "\n")
+
         except:
             traceback.print_exc()
-            self.open_select_host_window(f"Unable to connect to {self.hostname}")
+            self.open_select_host_window(message=f"Unable to connect to {self.hostname}")
 
     def start_gamepad(self):
         callback = {
@@ -316,9 +404,19 @@ class App(QMainWindow):
         self.robot_config = message["config"]
         self.update_status_bar()
 
+    def open_about_window(self):
+        if "about" not in self.popups or not self.popups["about"].isVisible():
+            self.popups["about"] = AboutPopup()
+            self.popups["about"].show()
+
     def open_select_host_window(self, message=None):
         if "select_host" not in self.popups or not self.popups["select_host"].isVisible():
-            self.popups["select_host"] = ConnectToHostPopup(callback=self.connect_to_host, message=message)
+            self.popups["select_host"] = ConnectToHostPopup(
+                callback=self.connect_to_host,
+                host_history=self.host_history,
+                selected_hostname=self.hostname,
+                message=message
+            )
             self.popups["select_host"].show()
 
     def open_play_message_window(self, destination):
@@ -346,7 +444,7 @@ class App(QMainWindow):
 
     @pyqtSlot(np.ndarray)
     def update_image(self, cv_img):
-        """Updates the image_label with a new opencv image"""
+        """Updates the image_label with ap new opencv image"""
         qt_img = self.convert_cv_qt(cv_img)
         self.image_label.setPixmap(qt_img)
         self.update_status_bar()
@@ -370,9 +468,9 @@ class App(QMainWindow):
                 self.popups["gamepad_added"].show()
 
     def keyPressEvent(self, e):
-        if not e.isAutoRepeat():
+        if self.client is not None and not e.isAutoRepeat():
             self.client.key_press_callback(e, True)
 
     def keyReleaseEvent(self, e):
-        if not e.isAutoRepeat():
+        if self.client is not None and not e.isAutoRepeat():
             self.client.key_press_callback(e, False)

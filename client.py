@@ -15,10 +15,9 @@ class Client(object):
         self.app = app
         self.socket = None
         self.motor_slow_mode = False
+        self.lock_camera = False
         self.host_ip = None
         self.port = None
-        #self.controller_mapping = {}
-        #self.axis_mapping = {}
         self.input_config_manager = InputConfigManager(robot_config=robot_config)
         self.axis_positions = {}
         self.consumers = {}
@@ -35,6 +34,11 @@ class Client(object):
             self.app.open_play_message_window(destination="lcd")
         elif action_id == "motor_slow_mode":
             self.motor_slow_mode = not self.motor_slow_mode
+        elif action_id == "lock_camera":
+            self.lock_camera = not self.lock_camera
+            if not self.lock_camera:
+                # Reset camera position
+                self.move_camera(0, 0)
         else:
             for command in self.input_config_manager.get_commands_for_action(action_id):
                 if "type" in command:
@@ -97,13 +101,14 @@ class Client(object):
             self.run_axis_action(group, x_pos, -y_pos)
 
     def move_camera(self, x_pos, y_pos):
-        if abs(y_pos) < 2:
-            self.send_message(dict(type="camera", action="center_position"))
-        else:
-            position = int(min(max(100 - (100 + y_pos) / 2, 0), 100))
-            self.send_message(dict(type="camera", action="set_position", args=dict(position=position)))
+        if not self.lock_camera:
+            if abs(y_pos) < 2:
+                self.send_message(dict(type="camera", action="center_position"))
+            else:
+                position = int(min(max(100 - (100 + y_pos) / 2, 0), 100))
+                self.send_message(dict(type="camera", action="set_position", args=dict(position=position)))
 
-    def move_motor(self, x_pos, y_pos):
+    def drive_robot(self, x_pos, y_pos):
         if abs(x_pos) < 0.01 and abs(y_pos) < 0.01:
             self.send_message(dict(type="motor", action="stop"))
         else:
@@ -125,7 +130,7 @@ class Client(object):
             else:
                 right_orientation = 'F'
 
-            self.send_message(dict(type="motor", action="move", args=dict(left_orientation=left_orientation,
+            self.send_message(dict(type="drive", action="move", args=dict(left_orientation=left_orientation,
                                                                           left_speed=abs(left_speed),
                                                                           right_orientation=right_orientation,
                                                                           right_speed=abs(right_speed),
@@ -139,7 +144,7 @@ class Client(object):
         x_pos_percent = int(x_pos * 100)
         y_pos_percent = int(y_pos * 100)
         if group == "drive":
-            self.move_motor(x_pos_percent, y_pos_percent)
+            self.drive_robot(x_pos_percent, y_pos_percent)
         elif group == "camera":
             self.move_camera(x_pos_percent, y_pos_percent)
 
@@ -168,12 +173,15 @@ class Client(object):
             # In case of failure try to reconnect
             if self.host_ip is not None:
                 print("Unable to send message, reconnect")
-                self.connect(self.host_ip, self.port)
-                self.socket.sendall(json.dumps(message).encode() + b"\n")
+                try:
+                    self.connect(self.host_ip, self.port)
+                    self.socket.sendall(json.dumps(message).encode() + b"\n")
+                except:
+                    print("Unable to reconnect")
 
     def play_message(self, message, destination="lcd"):
         socket_message = {
-            "type": "message",
+            "type": "talk",
             "action": "play",
             "args": {"message": message, "destination": destination}
         }

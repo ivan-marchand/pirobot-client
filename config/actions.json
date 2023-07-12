@@ -5,7 +5,7 @@
     "description": "Stop the Robot",
     "commands": [
       {
-        "type": "motor",
+        "type": "drive",
         "action": "stop"
       }
     ]
@@ -14,7 +14,8 @@
     "group": "robot",
     "commands": [
       {
-        "type": "motor",
+
+        "type": "drive",
         "action": "patrol"
       },
       {
@@ -138,8 +139,8 @@
     "group": "robot",
     "commands": [
       {
-        "type": "camera",
-        "action": "toggle_face_detection"
+        "type": "face_detection",
+        "action": "toggle"
       }
     ]
   },
@@ -147,6 +148,8 @@
     "group": "camera",
     "needs": "camera_servo",
     "axis_group": "camera",
+    "down_value": -1.0,
+    "axis_name": "y",
     "hat_group": "camera",
     "description": "Move camera up"
   },
@@ -154,6 +157,8 @@
     "group": "camera",
     "needs": "camera_servo",
     "axis_group": "camera",
+    "axis_name": "y",
+    "down_value": 1.0,
     "hat_group": "camera",
     "description": "Move camera down"
   },
@@ -178,6 +183,11 @@
     "name": "Slow motion",
     "group": "robot",
     "description": "Toggle Robot slow motion mode"
+  },
+  "lock_camera": {
+    "name": "Lock camera",
+    "group": "camera",
+    "description": "Lock the camera in its current position"
   },
   "drive_forward": {
     "name": "Drive Forward",
