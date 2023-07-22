@@ -4,7 +4,18 @@ from functools import partial
 
 from PyQt5.QtCore import pyqtSignal, Qt
 from PyQt5.QtGui import QKeySequence
-from PyQt5.QtWidgets import QDialog, QGridLayout, QGroupBox, QLabel, QLineEdit, QPushButton, QTabWidget, QHBoxLayout, QVBoxLayout, QWidget
+from PyQt5.QtWidgets import (
+    QDialog,
+    QGridLayout,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QPushButton,
+    QTabWidget,
+    QVBoxLayout,
+    QWidget
+)
 
 from gamepad import GamePad
 

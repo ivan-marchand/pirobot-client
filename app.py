@@ -8,7 +8,21 @@ import traceback
 from functools import partial
 
 from PyQt5 import QtGui
-from PyQt5.QtWidgets import QAction, QCompleter, QDialog, QHBoxLayout, QLabel, QMenu, QPushButton, QMainWindow, QLineEdit, QStatusBar, QVBoxLayout
+from PyQt5.QtWidgets import (
+    QAction,
+    QComboBox,
+    QCompleter,
+    QDialog,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMainWindow,
+    QMenu,
+    QPushButton,
+    QStatusBar,
+    QToolBar,
+    QVBoxLayout,
+)
 from PyQt5.QtGui import QIcon, QPixmap
 from PyQt5.QtCore import pyqtSignal, pyqtSlot, Qt, QThread
 
@@ -256,7 +270,11 @@ class App(QMainWindow):
         self.robot_name = "PiRobot"
         self.robot_config = {}
         self.resize(800, 600)
+        # Add menu
         self.create_menu_bar()
+        # Add toolbar
+        self.source_selection = None
+        self.create_toolbar()
         if full_screen:
             self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
             self.showFullScreen()
@@ -297,6 +315,46 @@ class App(QMainWindow):
         self.update_status_bar()
         self.gamepad_added_signal.connect(self.gamepad_added_callback)
         self.new_gamepad = set()
+
+    def create_toolbar(self):
+        toolbar = QToolBar("Toolbar")
+        self.addToolBar(toolbar)
+
+        # Camera source selection
+        toolbar.addWidget(QLabel("Source"))
+        self.source_selection = QComboBox()
+        self.source_selection.setFocusPolicy(Qt.NoFocus)
+        self.source_selection.addItem("Streaming", "streaming")
+        self.source_selection.addItem("Front Camera", "front")
+        if self.robot_config.get("robot_has_back_camera", False):
+            self.source_selection.addItem("Back Camera", "back")
+        toolbar.addWidget(self.source_selection)
+        toolbar.addSeparator()
+
+        # Record/Stop button
+        record_action = QAction("Record Video", self)
+        record_action.setIcon(QIcon("pics/record.png"))
+        record_action.triggered.connect(
+            lambda: self.client is None or self.client.start_video(source=self.source_selection.currentData())
+        )
+        toolbar.addAction(record_action)
+        stop_action = QAction("Stop Video", self)
+        stop_action.setIcon(QIcon("pics/stop.png"))
+        stop_action.triggered.connect(
+            lambda: self.client is None or self.client.stop_video()
+        )
+        toolbar.addAction(stop_action)
+        toolbar.addSeparator()
+
+        # Capture Picture button
+        capture_button = QAction("Capture Picture", self)
+        capture_button.setIcon(QIcon("pics/shutter.png"))
+        capture_button.triggered.connect(
+            lambda: self.client is None or self.client.capture_picture(
+                source=self.source_selection.currentData(), picture_format="png"
+            )
+        )
+        toolbar.addAction(capture_button)
 
     def closeEvent(self,event):
         for popup in self.popups.values():

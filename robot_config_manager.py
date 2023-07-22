@@ -1,7 +1,17 @@
 from functools import partial
 
 from PyQt5.QtCore import pyqtSignal
-from PyQt5.QtWidgets import QComboBox, QDialog, QGridLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QVBoxLayout
+from PyQt5.QtWidgets import (
+    QComboBox,
+    QDialog,
+    QGridLayout,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QPushButton,
+    QVBoxLayout,
+)
 
 
 class ConfigLayout(QGridLayout):
@@ -29,7 +39,7 @@ class RobotConfigManagerPopup(QDialog):
         self.client = client
 
         vbox = QVBoxLayout()
-        self.config_layout = ConfigLayout()
+        self.config_layout = QVBoxLayout()
         vbox.addLayout(self.config_layout)
 
         hbox = QHBoxLayout()
@@ -92,16 +102,13 @@ class RobotConfigManagerPopup(QDialog):
             label = QLabel("Unable to update config")
             label.setStyleSheet("color: red; font-weight: bold")
             self.config_layout.addWidget(label)
-            self.config_layout.newRow()
 
         # Add config value
         for category in config_by_category.keys():
-            category_label = QLabel(category.upper())
-            font = category_label.font()
-            font.setBold(True)
-            category_label.setFont(font)
-            self.config_layout.addWidget(category_label)
-            self.config_layout.newRow()
+            category_group_box = QGroupBox(category.upper())
+            self.config_layout.addWidget(category_group_box)
+            category_config_layout = ConfigLayout()
+            category_group_box.setLayout(category_config_layout)
             for config_name, config_item in config_by_category[category].items():
                 config_type = config_item["type"]
                 # Config Value
@@ -120,18 +127,18 @@ class RobotConfigManagerPopup(QDialog):
                     config_value_widget.setText(str(config_item["value"]))
 
                 # Config Name
-                self.config_layout.addWidget(QLabel(f"{config_name} (default: {default_value})"))
-                self.config_layout.addWidget(config_value_widget)
+                category_config_layout.addWidget(QLabel(f"{config_name} (default: {default_value})"))
+                category_config_layout.addWidget(config_value_widget)
 
                 # Update Button
                 update_button = QPushButton("Update")
                 update_button.clicked.connect(
                     partial(self.update_config_value, config_name, config_value_widget)
                 )
-                self.config_layout.addWidget(update_button)
+                category_config_layout.addWidget(update_button)
 
                 # Reset Button
                 reset_button = QPushButton("Reset to default")
                 reset_button.clicked.connect(partial(self.reset_config_value, config_name))
-                self.config_layout.addWidget(reset_button)
-                self.config_layout.newRow()
+                category_config_layout.addWidget(reset_button)
+                category_config_layout.newRow()

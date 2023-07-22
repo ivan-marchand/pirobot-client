@@ -44,6 +44,34 @@ class Client(object):
                 if "type" in command:
                     self.send_message(command)
 
+    def start_video(self, source):
+        message = {
+            "type": "camera",
+            "action": "start_video",
+            "args": {
+                "source": source
+            }
+        }
+        self.send_message(message)
+
+    def stop_video(self):
+        message = {
+            "type": "camera",
+            "action": "stop_video",
+        }
+        self.send_message(message)
+
+    def capture_picture(self, source, picture_format):
+        message = {
+            "type": "camera",
+            "action": "capture_picture",
+            "args": {
+                "source": source,
+                "format": picture_format,
+            }
+        }
+        self.send_message(message)
+
     def __del__(self):
         if self.socket is not None:
             self.socket.close()
@@ -110,7 +138,7 @@ class Client(object):
 
     def drive_robot(self, x_pos, y_pos):
         if abs(x_pos) < 0.01 and abs(y_pos) < 0.01:
-            self.send_message(dict(type="motor", action="stop"))
+            self.send_message(dict(type="drive", action="stop"))
         else:
 
             right_speed = min(max(-y_pos - x_pos, -100), 100)
@@ -191,7 +219,7 @@ class Client(object):
         action = self.input_config_manager.get_axis_group_for_keyboard_key(e.key())
         if action is not None:
             action_config = self.input_config_manager.get_action_config(action)
-            if "axis_group" in action_config and "group" in action_config and "axis_name" in action_config:
+            if action_config is not None and "axis_group" in action_config and "group" in action_config and "axis_name" in action_config:
                 group = action_config["group"]
                 axis_name = action_config["axis_name"]
                 if group not in self.axis_positions:
