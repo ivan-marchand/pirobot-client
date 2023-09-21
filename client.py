@@ -59,13 +59,14 @@ class Client(object):
         }
         self.send_message(message)
 
-    def capture_picture(self, source, picture_format):
+    def capture_picture(self, source, picture_format, destination):
         message = {
             "type": "camera",
             "action": "capture_picture",
             "args": {
                 "source": source,
                 "format": picture_format,
+                "destination": destination,
             }
         }
         self.send_message(message)
