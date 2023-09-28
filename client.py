@@ -1,29 +1,27 @@
+import aiohttp
+import asyncio
 import json
-import os
-import socket
-import threading
-
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QKeySequence
+import queue
+import traceback
 
 from input_config_manager import InputConfigManager
 
 
 class Client(object):
+    message_queue = queue.Queue()
 
     def __init__(self, app, robot_config):
         self.app = app
-        self.socket = None
         self.motor_slow_mode = False
         self.lock_camera = False
-        self.host_ip = None
-        self.port = None
+        self.host = None
+        self.ws = None
         self.input_config_manager = InputConfigManager(robot_config=robot_config)
         self.axis_positions = {}
         self.consumers = {}
 
     def is_connected(self):
-        return self.socket is not None
+        return self.ws is not None
 
     def run_action(self, action_id):
         if action_id == "app_close":
@@ -73,30 +71,32 @@ class Client(object):
         self.send_message(message)
 
     def __del__(self):
-        if self.socket is not None:
-            self.socket.close()
-            self.socket = None
+        if self.ws is not None:
+            self.ws.close()
+            self.ws = None
 
-    def connect(self, host_ip, port):
-        try:
-            if self.socket is not None:
-                self.socket.close()
-                self.socket = None
-            self.socket = socket.socket(socket.AF_INET)
-            self.socket.settimeout(1)
-            self.socket.connect((host_ip, port))
-            self.host_ip = host_ip
-            self.port = port
-            threading.Thread(target=self.run_forever, daemon=True).start()
-        except:
-            self.socket = None
-            print(f"Unable to connect to {host_ip}")
-            raise
+    async def connect(self, host):
+        self.host = host
+        while True:
+            try:
+                url = f"http://{host}/ws/robot"
+                session = aiohttp.ClientSession()
+                async with session.ws_connect(url) as ws:
+                    print(f"Connected to {url}")
+                    self.ws = ws
+                    async for msg in ws:
+                        message = json.loads(msg.data)
+                        for consumer in self.consumers.get(message["topic"], []):
+                            consumer(message["message"])
+            except:
+                traceback.print_exc()
+            print(f"Unable to connect to {url}, reconnecting")
+            await asyncio.sleep(1)
 
-    def register_consumer(self, message_type, consumer):
-        if message_type not in self.consumers:
-            self.consumers[message_type] = []
-        self.consumers[message_type].append(consumer)
+    def register_consumer(self, message_topic, consumer):
+        if message_topic not in self.consumers:
+            self.consumers[message_topic] = []
+        self.consumers[message_topic].append(consumer)
 
     def run_forever(self):
         buffer = ""
@@ -195,17 +195,13 @@ class Client(object):
                 self.run_action(action)
 
     def send_message(self, message):
+        asyncio.run(self._send_message(message))
+
+    async def _send_message(self, message):
         try:
-            self.socket.sendall(json.dumps(message).encode() + b"\n")
+            await self.ws.send_json(dict(topic="robot", message=message))
         except:
-            # In case of failure try to reconnect
-            if self.host_ip is not None:
-                print("Unable to send message, reconnect")
-                try:
-                    self.connect(self.host_ip, self.port)
-                    self.socket.sendall(json.dumps(message).encode() + b"\n")
-                except:
-                    print("Unable to reconnect")
+            print("Unable to send message")
 
     def play_message(self, message, destination="lcd"):
         socket_message = {

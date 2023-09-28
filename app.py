@@ -1,8 +1,9 @@
+import aiohttp
+import asyncio
 import cv2
 import numpy as np
 import os
-import socket
-import struct
+import threading
 import time
 import traceback
 from functools import partial
@@ -24,79 +25,12 @@ from PyQt5.QtWidgets import (
     QVBoxLayout,
 )
 from PyQt5.QtGui import QIcon, QPixmap
-from PyQt5.QtCore import pyqtSignal, pyqtSlot, Qt, QThread
+from PyQt5.QtCore import pyqtSignal, pyqtSlot, Qt
 
 from gamepad import GamePad
 from client import Client
 from input_config_manager import InputConfigManagerPopup
 from robot_config_manager import RobotConfigManagerPopup
-
-
-class VideoThread(QThread):
-    change_pixmap_signal = pyqtSignal(np.ndarray)
-    FPS_UPDATE_INTERVAL = 1
-
-    def __init__(self, host_ip, port):
-        super().__init__()
-        self.host_ip = host_ip
-        self.running = False
-        self.frame_counter = 0
-        self.last_frame_ts = None
-        self.fps = 0
-        self.port = port
-
-    def stop(self):
-        self.running = False
-
-    def run(self):
-        self.running = True
-        while self.running:
-            try:
-                # create socket
-                client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                client_socket.connect((self.host_ip, self.port))  # a tuple
-                data = b""
-                payload_size = struct.calcsize("Q")
-                self.last_frame_ts = time.time()
-                while self.running:
-                    while len(data) < payload_size:
-                        packet = client_socket.recv(4 * 1024)  # 4K
-                        if not packet:
-                            break
-                        data += packet
-                    packed_msg_size = data[:payload_size]
-                    data = data[payload_size:]
-                    msg_size = struct.unpack("Q", packed_msg_size)[0]
-
-                    while len(data) < msg_size:
-                        data += client_socket.recv(4 * 1024)
-                    # New frame received, indicate we're ready for the next one
-                    client_socket.send(b"RDY\n")
-                    frame_data = data[:msg_size]
-                    data = data[msg_size:]
-                    frame = np.frombuffer(frame_data, dtype="byte")
-                    frame = cv2.imdecode(frame, cv2.IMREAD_UNCHANGED)
-                    # Update fps
-                    self.frame_counter += 1
-                    now = time.time()
-                    if now > self.last_frame_ts + VideoThread.FPS_UPDATE_INTERVAL:
-                        self.fps = round(self.frame_counter / (now - self.last_frame_ts))
-                        self.last_frame_ts = now
-                        self.frame_counter = 0
-
-                    self.change_pixmap_signal.emit(frame)
-            except KeyboardInterrupt:
-                self.stop()
-            except ConnectionRefusedError:
-                traceback.print_exc()
-                print("Unable to connect to video server")
-                time.sleep(1)
-                continue
-            except:
-                traceback.print_exc()
-                continue
-            finally:
-                client_socket.close()
 
 
 class ImageLabel(QLabel):
@@ -140,7 +74,7 @@ class GamepadAddedPopup(QDialog):
 
 
 class ConnectToHostPopup(QDialog):
-    def __init__(self, callback, host_history, selected_hostname, message=None):
+    def __init__(self, callback, host_history, selected_host, message=None):
         super().__init__()
         self.setWindowTitle("Select Host")
         self.setGeometry(50, 50, 500, 110)
@@ -154,9 +88,9 @@ class ConnectToHostPopup(QDialog):
             vbox.addWidget(label)
 
         host_selector = QLineEdit()
-        if selected_hostname is not None:
-            self.host = selected_hostname
-            host_selector.setText(selected_hostname)
+        if selected_host is not None:
+            self.host = selected_host
+            host_selector.setText(selected_host)
         host_selector.setCompleter(QCompleter(host_history))
         host_selector.textChanged.connect(self.host_selected)
         vbox.addWidget(host_selector)
@@ -259,8 +193,10 @@ Written by <a href=\"mailto:ivan@pirobot.net\">Ivan Marchand</a>
 
 class App(QMainWindow):
     gamepad_added_signal = pyqtSignal("PyQt_PyObject")
+    change_pixmap_signal = pyqtSignal(np.ndarray)
+    FPS_UPDATE_INTERVAL = 1
 
-    def __init__(self, hostname, server_port, video_server_port, full_screen):
+    def __init__(self, host, full_screen):
         super().__init__()
 
         # Update window title
@@ -303,15 +239,16 @@ class App(QMainWindow):
 
         # Connect to Host
         self.client = None
-        self.hostname = hostname
-        self.server_port = server_port
-        self.video_server_port = video_server_port
-        self.video_thread = None
+        self.host = host
+        self.fps = 0
+        self.frame_counter = 0
+        self.last_frame_ts = 0
+        self.loop = None
         self.gamepad_thread = None
-        if self.hostname is None:
+        if self.host is None:
             self.open_select_host_window()
         else:
-            self.connect_to_host(self.hostname)
+            self.connect_to_host(self.host)
         self.update_status_bar()
         self.gamepad_added_signal.connect(self.gamepad_added_callback)
         self.new_gamepad = set()
@@ -365,9 +302,8 @@ class App(QMainWindow):
     def update_status_bar(self):
         # Update status bar
         if self.client is not None and self.client.is_connected():
-            status_message = f"Connected to {self.hostname} | {self.robot_name}"
-            if self.video_thread is not None:
-                status_message += f" | FPS: {self.video_thread.fps}"
+            status_message = f"Connected to {self.host} | {self.robot_name}"
+            status_message += f" | FPS: {self.fps}"
         else:
             status_message = "Connecting..."
 
@@ -419,34 +355,62 @@ class App(QMainWindow):
 
         menu_bar.addMenu(help_menu)
 
-    def connect_to_host(self, hostname):
+    def _connect_to_host(self, host):
+        if self.loop is not None:
+            self.loop.stop()
+        self.loop = asyncio.new_event_loop()
+        self.loop.create_task(self.client.connect(host))
+        self.loop.create_task(self.connect_to_stream_socket())
+        self.loop.run_forever()
+
+    def connect_to_host(self, host):
         try:
-            self.hostname = hostname
-            host_ip = socket.gethostbyname(self.hostname)
             self.client = Client(app=self, robot_config=self.robot_config)
             self.client.register_consumer("status", self.robot_init_callback)
-            self.client.connect(host_ip, self.server_port)
-            # create the video capture thread
-            if self.video_thread is not None:
-                self.video_thread.stop()
-            self.video_thread = VideoThread(host_ip, self.video_server_port)
+            threading.Thread(target=self._connect_to_host, kwargs=dict(host=host), daemon=True).start()
+
             # connect its signal to the update_image slot
-            self.video_thread.change_pixmap_signal.connect(self.update_image)
-            # Start the video thread
-            self.video_thread.start()
+            self.change_pixmap_signal.connect(self.update_image)
             # GamePad
             self.start_gamepad()
             # Status bar
             self.update_status_bar()
             # Update history file
-            self.host_history.add(hostname)
+            self.host_history.add(host)
             with open(self.history_file_path, "w") as history_file:
                 for host in self.host_history:
                     history_file.write(host + "\n")
 
         except:
             traceback.print_exc()
-            self.open_select_host_window(message=f"Unable to connect to {self.hostname}")
+            self.open_select_host_window(message=f"Unable to connect to {self.host}")
+
+    async def connect_to_stream_socket(self):
+        while True:
+            try:
+                url = f"http://{self.host}/ws/video_stream"
+                session = aiohttp.ClientSession()
+                async with session.ws_connect(url) as ws:
+                    print(f"Connected to {url}")
+                    await ws.send_str("start")
+                    async for msg in ws:
+                        frame = np.frombuffer(msg.data, dtype="byte")
+                        frame = cv2.imdecode(frame, cv2.IMREAD_UNCHANGED)
+                        # Ready for next frame
+                        await ws.send_str("ready")
+                        # Update fps
+                        self.frame_counter += 1
+                        now = time.time()
+                        if now > self.last_frame_ts + self.FPS_UPDATE_INTERVAL:
+                            self.fps = round(self.frame_counter / (now - self.last_frame_ts))
+                            self.last_frame_ts = now
+                            self.frame_counter = 0
+
+                        self.change_pixmap_signal.emit(frame)
+            except:
+                traceback.print_exc()
+            print(f"Unable to connect to {url}, reconnecting")
+            await asyncio.sleep(1)
 
     def start_gamepad(self):
         callback = {
@@ -472,7 +436,7 @@ class App(QMainWindow):
             self.popups["select_host"] = ConnectToHostPopup(
                 callback=self.connect_to_host,
                 host_history=self.host_history,
-                selected_hostname=self.hostname,
+                selected_host=self.host,
                 message=message
             )
             self.popups["select_host"].show()

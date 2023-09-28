@@ -8,6 +8,7 @@ pyqt5 = "*"
 opencv-python-headless = "*"
 pyinstaller = "*"
 pygame = "*"
+aiohttp = "*"
 
 [dev-packages]
 
