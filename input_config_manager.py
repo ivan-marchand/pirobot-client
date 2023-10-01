@@ -1,6 +1,7 @@
 import json
 import os
 from functools import partial
+from pathlib import Path
 
 from PyQt5.QtCore import pyqtSignal, Qt
 from PyQt5.QtGui import QKeySequence
@@ -46,7 +47,7 @@ class InputConfigManager(object):
     def __init__(self, robot_config):
         self.robot_config = robot_config
         self.config_path = os.path.join(os.path.dirname(__file__), "config")
-        self.user_config_path = os.path.join(os.environ["HOME"], ".pirobot-remote")
+        self.user_config_path = os.path.join(Path.home(), ".pirobot-remote")
         self.actions = {}
         self.keyboard_mapping = {}
         self.gamepad_mapping = {}
