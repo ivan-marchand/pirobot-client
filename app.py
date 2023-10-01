@@ -39,7 +39,7 @@ class ImageLabel(QLabel):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.setAlignment(Qt.AlignCenter)
-        self.setPixmap(QPixmap(str(Path("pics/logo.svg"))))
+        self.setPixmap(QPixmap(os.path.join(os.path.dirname(__file__), Path("pics/logo.svg"))))
 
     def mousePressEvent(self, event):
         print("clicked", event)
@@ -163,7 +163,7 @@ class AboutPopup(QDialog):
         vbox.setAlignment(Qt.AlignCenter)
 
         logo_label = QLabel()
-        logo_label.setPixmap(QPixmap(str(Path("pics/logo.svg"))).scaledToWidth(400))
+        logo_label.setPixmap(QPixmap(os.path.join(os.path.dirname(__file__), Path("pics/logo.svg"))).scaledToWidth(400))
         vbox.addWidget(logo_label)
 
         prompt = """
@@ -202,7 +202,7 @@ class App(QMainWindow):
 
         # Update window title
         self.setWindowTitle("PiRobot Remote Control")
-        self.setWindowIcon(QIcon(str(Path("pics/logo_small.svg"))))
+        self.setWindowIcon(QIcon(os.path.join(os.path.dirname(__file__), Path("pics/logo_small.svg"))))
 
         self.robot_name = "PiRobot"
         self.robot_config = {}
@@ -271,13 +271,13 @@ class App(QMainWindow):
 
         # Record/Stop button
         record_action = QAction("Record Video", self)
-        record_action.setIcon(QIcon(str(Path("pics/record.png"))))
+        record_action.setIcon(QIcon(os.path.join(os.path.dirname(__file__), Path("pics/record.png"))))
         record_action.triggered.connect(
             lambda: self.client is None or self.client.start_video(source=self.source_selection.currentData())
         )
         toolbar.addAction(record_action)
         stop_action = QAction("Stop Video", self)
-        stop_action.setIcon(QIcon(str(Path("pics/stop.png"))))
+        stop_action.setIcon(QIcon(os.path.join(os.path.dirname(__file__), Path("pics/stop.png"))))
         stop_action.triggered.connect(
             lambda: self.client is None or self.client.stop_video()
         )
@@ -286,7 +286,7 @@ class App(QMainWindow):
 
         # Capture Picture button
         capture_button = QAction("Capture Picture", self)
-        capture_button.setIcon(QIcon(str(Path("pics/shutter.png"))))
+        capture_button.setIcon(QIcon(os.path.join(os.path.dirname(__file__), Path("pics/shutter.png"))))
         capture_button.triggered.connect(
             lambda: self.client is None or self.client.capture_picture(
                 source=self.source_selection.currentData(), picture_format="png"
