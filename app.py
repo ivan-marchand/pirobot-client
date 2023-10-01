@@ -3,6 +3,7 @@ import asyncio
 import cv2
 import numpy as np
 import os
+from pathlib import Path
 import threading
 import time
 import traceback
@@ -217,7 +218,7 @@ class App(QMainWindow):
         self.popups = {}
 
         # Load the host history
-        self.user_config_path = os.path.join(os.environ["HOME"], ".pirobot-remote")
+        self.user_config_path = os.path.join(Path.home(), ".pirobot-remote")
         if not os.path.isdir(self.user_config_path):
             os.makedirs(self.user_config_path)
         self.history_file_path = os.path.join(self.user_config_path, "host.history")

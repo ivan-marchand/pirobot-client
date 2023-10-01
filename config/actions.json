@@ -187,6 +187,7 @@
   "lock_camera": {
     "name": "Lock camera",
     "group": "camera",
+    "needs": "camera_servo",
     "description": "Lock the camera in its current position"
   },
   "drive_forward": {
