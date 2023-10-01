@@ -361,7 +361,7 @@ class App(QMainWindow):
             self.loop.stop()
         self.loop = asyncio.new_event_loop()
         self.loop.create_task(self.client.connect(host))
-        self.loop.create_task(self.connect_to_stream_socket())
+        self.loop.create_task(self.connect_to_stream_socket(host))
         self.loop.run_forever()
 
     def connect_to_host(self, host):
@@ -386,10 +386,11 @@ class App(QMainWindow):
             traceback.print_exc()
             self.open_select_host_window(message=f"Unable to connect to {self.host}")
 
-    async def connect_to_stream_socket(self):
+    async def connect_to_stream_socket(self, host):
+        self.host = host
         while True:
             try:
-                url = f"http://{self.host}/ws/video_stream"
+                url = f"http://{host}/ws/video_stream"
                 session = aiohttp.ClientSession()
                 async with session.ws_connect(url) as ws:
                     print(f"Connected to {url}")
