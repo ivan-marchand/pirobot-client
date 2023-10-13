@@ -1,16 +1,19 @@
 from functools import partial
 
-from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtCore import pyqtSignal, Qt
 from PyQt5.QtWidgets import (
+    QApplication,
     QComboBox,
-    QDialog,
     QGridLayout,
     QGroupBox,
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QMainWindow,
     QPushButton,
+    QScrollArea,
     QVBoxLayout,
+    QWidget,
 )
 
 
@@ -30,13 +33,17 @@ class ConfigLayout(QGridLayout):
         self.row += 1
 
 
-class RobotConfigManagerPopup(QDialog):
+class RobotConfigManagerPopup(QMainWindow):
     new_config_signal = pyqtSignal(dict)
 
     def __init__(self, client):
         super().__init__()
         self.setWindowTitle("Robot Configuration")
         self.client = client
+
+        self.scroll = QScrollArea()
+        self.setCentralWidget(self.scroll)
+        print()
 
         vbox = QVBoxLayout()
         self.config_layout = QVBoxLayout()
@@ -49,7 +56,14 @@ class RobotConfigManagerPopup(QDialog):
         hbox.addWidget(close_button)
 
         vbox.addLayout(hbox)
-        self.setLayout(vbox)
+        widget = QWidget()
+        widget.setLayout(vbox)
+        self.scroll.setWidget(widget)
+        self.scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.setFixedWidth(self.contentsRect().width() * 1.1)
+        self.setFixedHeight(QApplication.primaryScreen().size().height() * 0.7)
+        self.scroll.setWidgetResizable(True)
 
         self.new_config_signal.connect(self.update_config)
         self.client.send_message(dict(type="configuration", action="get"))

@@ -211,6 +211,7 @@ class App(QMainWindow):
         self.create_menu_bar()
         # Add toolbar
         self.source_selection = None
+        self.destination_selection = None
         self.create_toolbar()
         if full_screen:
             self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
@@ -289,10 +290,18 @@ class App(QMainWindow):
         capture_button.setIcon(QIcon(os.path.join(os.path.dirname(__file__), Path("pics/shutter.png"))))
         capture_button.triggered.connect(
             lambda: self.client is None or self.client.capture_picture(
-                source=self.source_selection.currentData(), picture_format="png"
+                source=self.source_selection.currentData(),
+                picture_format="png",
+                destination=self.destination_selection.currentData()
             )
         )
         toolbar.addAction(capture_button)
+        toolbar.addWidget(QLabel("Destination"))
+        self.destination_selection = QComboBox()
+        self.destination_selection.setFocusPolicy(Qt.NoFocus)
+        self.destination_selection.addItem("File", "file")
+        self.destination_selection.addItem("LCD", "lcd")
+        toolbar.addWidget(self.destination_selection)
 
     def closeEvent(self,event):
         for popup in self.popups.values():

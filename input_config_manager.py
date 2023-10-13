@@ -6,16 +6,19 @@ from pathlib import Path
 from PyQt5.QtCore import pyqtSignal, Qt
 from PyQt5.QtGui import QKeySequence
 from PyQt5.QtWidgets import (
+    QApplication,
     QDialog,
     QGridLayout,
     QGroupBox,
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QMainWindow,
     QPushButton,
+    QScrollArea,
     QTabWidget,
     QVBoxLayout,
-    QWidget
+    QWidget,
 )
 
 from gamepad import GamePad
@@ -451,15 +454,19 @@ class InputConfigTab(QWidget):
     def __init__(self, config_manager):
         super().__init__()
         self.config_manager = config_manager
-        self.layout = QHBoxLayout(self)
+        app = QApplication.instance()
+        if app.primaryScreen().size().width() < 500:
+            # Small screen?
+            self.layout = QVBoxLayout(self)
+        else:
+            self.layout = QHBoxLayout(self)
         self.setLayout(self.layout)
 
         # Drive controls
         drive_control_frame = QGroupBox("Drive Control")
-        drive_control_frame.setFixedWidth(450)
-        drive_control_frame.setFixedHeight(200)
         self.layout.addWidget(drive_control_frame)
         drive_control_layout = QGridLayout()
+        drive_control_layout.setSpacing(0)
         drive_control_frame.setLayout(drive_control_layout)
         # UP
         action = "drive_forward"
@@ -565,7 +572,7 @@ class GamepadConfigTab(InputConfigTab):
         return AssignedGamepadEventWidget(action=action, config_manager=self.config_manager, joystick=self.joystick)
 
 
-class InputConfigManagerPopup(QDialog):
+class InputConfigManagerPopup(QMainWindow):
     gamepad_added_signal = pyqtSignal("PyQt_PyObject")
     gamepad_removed_signal = pyqtSignal("PyQt_PyObject")
     gamepad_event_listener = None
@@ -596,7 +603,6 @@ class InputConfigManagerPopup(QDialog):
         # Add tabs
         self.tabs.addTab(self.keyboard_tab, "Keyboard")
         self.layout.addWidget(self.tabs)
-        self.setLayout(self.layout)
 
         button_box = QHBoxLayout()
         self.layout.addLayout(button_box)
@@ -613,6 +619,22 @@ class InputConfigManagerPopup(QDialog):
         save_button.setFocus()
         save_button.clicked.connect(self.save)
         button_box.addWidget(save_button)
+
+        # Add scroll area
+        widget = QWidget()
+        widget.setLayout(self.layout)
+        app = QApplication.instance()
+        if app.primaryScreen().size().width() < 500:
+            # Small screen? Use scrolling
+            scroll = QScrollArea()
+            scroll.setWidgetResizable(True)
+            scroll.setWidget(widget)
+
+            scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+            scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+            self.setCentralWidget(scroll)
+        else:
+            self.setCentralWidget(widget)
 
         # Start Gamepad loop
         self.start_gamepad()
