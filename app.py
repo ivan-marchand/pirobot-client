@@ -392,7 +392,7 @@ class App(QMainWindow):
             try:
                 url = f"http://{host}/ws/video_stream"
                 session = aiohttp.ClientSession()
-                async with session.ws_connect(url) as ws:
+                async with session.ws_connect(url, receive_timeout=10.0) as ws:
                     print(f"Connected to {url}")
                     await ws.send_str("start")
                     async for msg in ws:

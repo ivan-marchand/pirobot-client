@@ -98,25 +98,6 @@ class Client(object):
             self.consumers[message_topic] = []
         self.consumers[message_topic].append(consumer)
 
-    def run_forever(self):
-        buffer = ""
-        while self.socket is not None:
-            try:
-                self.socket.setblocking(False)
-                packet = self.socket.recv(4 * 1024)  # 4K
-                if not packet:
-                    continue
-                buffer += packet.decode()
-                pos = buffer.find("\n")
-                if pos > 0:
-                    message = buffer[:pos]
-                    buffer = buffer[pos + 1:]
-                    message = json.loads(message)
-                    for consumer in self.consumers.get(message["type"], []):
-                        consumer(message)
-            except:
-                continue
-
     def gamepad_absolute_axis_callback(self, joystick, axis):
         group = self.input_config_manager.get_group_for_axis(joystick, axis)
         if group is not None:
