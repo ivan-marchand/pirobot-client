@@ -194,7 +194,7 @@ class Client(object):
         self.send_message(socket_message)
 
     def key_press_callback(self, e, down):
-        action = self.input_config_manager.get_axis_group_for_keyboard_key(e.key())
+        action = self.input_config_manager.get_action_for_keyboard_key(e.key())
         if action is not None:
             action_config = self.input_config_manager.get_action_config(action)
             if action_config is not None and "axis_group" in action_config and "group" in action_config and "axis_name" in action_config:

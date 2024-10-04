@@ -26,7 +26,7 @@ from PyQt5.QtWidgets import (
     QVBoxLayout,
 )
 from PyQt5.QtGui import QIcon, QPixmap
-from PyQt5.QtCore import pyqtSignal, pyqtSlot, Qt
+from PyQt5.QtCore import pyqtSignal, pyqtSlot, Qt, QUrl
 
 from gamepad import GamePad
 from client import Client
@@ -302,6 +302,21 @@ class App(QMainWindow):
         self.destination_selection.addItem("File", "file")
         self.destination_selection.addItem("LCD", "lcd")
         toolbar.addWidget(self.destination_selection)
+        toolbar.addSeparator()
+        # Picture gallery button
+        photo_gallery_button = QAction("Open photo gallery", self)
+        photo_gallery_button.setIcon(QIcon(os.path.join(os.path.dirname(__file__), Path("pics/picture_gallery.png"))))
+        photo_gallery_button.triggered.connect(
+            lambda: QtGui.QDesktopServices.openUrl(QUrl(f"http://{self.host}/pictures")) if self.host else None
+        )
+        toolbar.addAction(photo_gallery_button)
+        # Capture Picture button
+        video_gallery_button = QAction("Open video gallery", self)
+        video_gallery_button.setIcon(QIcon(os.path.join(os.path.dirname(__file__), Path("pics/video_gallery.png"))))
+        video_gallery_button.triggered.connect(
+            lambda: QtGui.QDesktopServices.openUrl(QUrl(f"http://{self.host}/videos")) if self.host else None
+        )
+        toolbar.addAction(video_gallery_button)
 
     def closeEvent(self,event):
         for popup in self.popups.values():
@@ -503,6 +518,9 @@ class App(QMainWindow):
     def keyPressEvent(self, e):
         if self.client is not None and not e.isAutoRepeat():
             self.client.key_press_callback(e, True)
+        elif e.key() == Qt.Key_Q:
+            self.close()
+
 
     def keyReleaseEvent(self, e):
         if self.client is not None and not e.isAutoRepeat():

@@ -78,7 +78,7 @@ class InputConfigManager(object):
                 return action
         return None
 
-    def get_axis_group_for_keyboard_key(self, key):
+    def get_action_for_keyboard_key(self, key):
         return self.get_action_for_keyboard_event({"type": "key", "key": key})
 
     def get_gamepad_events_for_action(self, action, joystick):
