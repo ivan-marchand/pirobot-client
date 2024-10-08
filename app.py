@@ -339,11 +339,21 @@ class App(QMainWindow):
 
         # Creating Settings menu
         file_menu = QMenu("File", self)
-        # Select host action
+        # Quit action
         quit_action = QAction(self)
         quit_action.setText("Quit")
         quit_action.triggered.connect(self.close)
         file_menu.addAction(quit_action)
+        # Open logs action
+        logs_action = QAction(self)
+        logs_action.setText("Open logs..")
+        logs_action.triggered.connect(lambda: QtGui.QDesktopServices.openUrl(QUrl(f"http://{self.host}/logs")) if self.host else None)
+        file_menu.addAction(logs_action)
+        # Open message logs action
+        message_logs_action = QAction(self)
+        message_logs_action.setText("Open message logs..")
+        message_logs_action.triggered.connect(lambda: QtGui.QDesktopServices.openUrl(QUrl(f"http://{self.host}/logs?type=message")) if self.host else None)
+        file_menu.addAction(message_logs_action)
 
         menu_bar.addMenu(file_menu)
 
