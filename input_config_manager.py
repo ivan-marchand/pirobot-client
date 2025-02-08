@@ -594,7 +594,7 @@ class InputConfigManagerPopup(QMainWindow):
         self.setWindowTitle("Input Device Configuration")
 
         # Display tabs
-        self.layout = QVBoxLayout(self)
+        self.layout = QVBoxLayout()
         self.tabs = QTabWidget()
         #   self.tabs.setFocusPolicy(Qt.NoFocus)
         self.keyboard_tab = KeyboardConfigTab(config_manager=self.config_manager)
