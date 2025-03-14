@@ -455,7 +455,7 @@ class InputConfigTab(QWidget):
         super().__init__()
         self.config_manager = config_manager
         app = QApplication.instance()
-        if app.primaryScreen().size().width() < 500:
+        if app.primaryScreen().size().width() < 500 or True:
             # Small screen?
             self.layout = QVBoxLayout(self)
         else:
@@ -624,7 +624,7 @@ class InputConfigManagerPopup(QMainWindow):
         widget = QWidget()
         widget.setLayout(self.layout)
         app = QApplication.instance()
-        if app.primaryScreen().size().width() < 500:
+        if app.primaryScreen().size().width() < 500 or True:
             # Small screen? Use scrolling
             scroll = QScrollArea()
             scroll.setWidgetResizable(True)

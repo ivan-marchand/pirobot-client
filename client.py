@@ -14,6 +14,7 @@ class Client(object):
         self.app = app
         self.motor_slow_mode = False
         self.lock_camera = False
+        self.lock_wrist = False
         self.host = None
         self.ws = None
         self.input_config_manager = InputConfigManager(robot_config=robot_config)
@@ -37,6 +38,8 @@ class Client(object):
             if not self.lock_camera:
                 # Reset camera position
                 self.move_camera(0, 0)
+        elif action_id == "lock_wrist":
+            self.lock_wrist = not self.lock_wrist
         else:
             for command in self.input_config_manager.get_commands_for_action(action_id):
                 if "type" in command:
@@ -118,6 +121,28 @@ class Client(object):
                 position = int(min(max(100 - (100 + y_pos) / 2, 0), 100))
                 self.send_message(dict(type="camera", action="set_position", args=dict(position=position)))
 
+    def move_arm(self, x_pos, y_pos):
+        if abs(x_pos) < 0.01:
+            self.send_message(dict(type="arm", action="move", args=dict(id="shoulder", speed=0, lock_wrist=self.lock_wrist)))
+        else:
+            self.send_message(dict(type="arm", action="move", args=dict(id="shoulder", speed=x_pos, lock_wrist=self.lock_wrist)))
+
+        if abs(y_pos) < 0.01:
+            self.send_message(dict(type="arm", action="move", args=dict(id="forearm", speed=0, lock_wrist=self.lock_wrist)))
+        else:
+            self.send_message(dict(type="arm", action="move", args=dict(id="forearm", speed=y_pos, lock_wrist=self.lock_wrist)))
+
+    def move_claw(self, x_pos, y_pos):
+        if abs(x_pos) < 0.01:
+            self.send_message(dict(type="arm", action="move", args=dict(id="claw", speed=0, lock_wrist=self.lock_wrist)))
+        else:
+            self.send_message(dict(type="arm", action="move", args=dict(id="claw", speed=x_pos, lock_wrist=self.lock_wrist)))
+
+        if abs(y_pos) < 0.01:
+            self.send_message(dict(type="arm", action="move", args=dict(id="wrist", speed=0, lock_wrist=self.lock_wrist)))
+        else:
+            self.send_message(dict(type="arm", action="move", args=dict(id="wrist", speed=y_pos, lock_wrist=self.lock_wrist)))
+
     def drive_robot(self, x_pos, y_pos):
         if abs(x_pos) < 0.01 and abs(y_pos) < 0.01:
             self.send_message(dict(type="drive", action="stop"))
@@ -157,6 +182,10 @@ class Client(object):
             self.drive_robot(x_pos_percent, y_pos_percent)
         elif group == "camera":
             self.move_camera(x_pos_percent, y_pos_percent)
+        elif group == "arm":
+            self.move_arm(x_pos_percent, y_pos_percent)
+        elif group == "claw":
+            self.move_claw(x_pos_percent, y_pos_percent)
 
     def gamepad_button_callback(self, joystick, button, down):
         action = self.input_config_manager.get_action_for_gamepad_button(joystick, button)

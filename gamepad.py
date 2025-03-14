@@ -17,9 +17,8 @@ class GamePad():
         GamePad.running = True
         while GamePad.running:
             try:
-                if not pygame.get_init():
-                    pygame.init()
                 for event in pygame.event.get(pump=False):
+                    print(event)
                     # Buttons
                     if event.type in [pygame.JOYBUTTONDOWN, pygame.JOYBUTTONUP]:
                         joystick = joysticks[event.instance_id]
@@ -67,6 +66,9 @@ class GamePad():
     def start_gamepad(callback):
         if GamePad.thread is not None:
             GamePad.stop_gamepad()
+        if not pygame.get_init():
+            pygame.init()
+            pygame.joystick.init()
         GamePad.thread = threading.Thread(target=GamePad.start_loop, kwargs=dict(callback=callback), daemon=True)
         GamePad.thread.start()
 
