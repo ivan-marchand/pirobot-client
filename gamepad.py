@@ -17,8 +17,7 @@ class GamePad():
         GamePad.running = True
         while GamePad.running:
             try:
-                for event in pygame.event.get(pump=False):
-                    print(event)
+                for event in pygame.event.get():
                     # Buttons
                     if event.type in [pygame.JOYBUTTONDOWN, pygame.JOYBUTTONUP]:
                         joystick = joysticks[event.instance_id]

@@ -262,7 +262,7 @@
   "shoulder_left": {
     "group": "arm",
     "needs": "arm",
-    "axis_group": "arm",
+    "axis_group": "shoulder",
     "down_value": 0.4,
     "axis_name": "x",
     "hat_group": "arm",
@@ -271,7 +271,7 @@
   "shoulder_right": {
     "group": "arm",
     "needs": "arm",
-    "axis_group": "arm",
+    "axis_group": "shoulder",
     "down_value": -0.4,
     "axis_name": "x",
     "hat_group": "arm",
@@ -280,7 +280,7 @@
   "forearm_up": {
     "group": "arm",
     "needs": "arm",
-    "axis_group": "arm",
+    "axis_group": "forearm",
     "down_value": 0.4,
     "axis_name": "y",
     "hat_group": "arm",
@@ -289,7 +289,7 @@
   "forearm_down": {
     "group": "arm",
     "needs": "arm",
-    "axis_group": "arm",
+    "axis_group": "forearm",
     "down_value": -0.4,
     "axis_name": "y",
     "hat_group": "arm",
@@ -344,7 +344,7 @@
   "wrist_up": {
     "group": "claw",
     "needs": "arm",
-    "axis_group": "claw",
+    "axis_group": "wrist",
     "down_value": 0.4,
     "axis_name": "y",
     "hat_group": "claw",
@@ -353,7 +353,7 @@
   "wrist_down": {
     "group": "claw",
     "needs": "arm",
-    "axis_group": "claw",
+    "axis_group": "wrist",
     "down_value": -0.4,
     "axis_name": "y",
     "hat_group": "claw",
@@ -364,5 +364,75 @@
     "group": "claw",
     "needs": "arm",
     "description": "Lock the wrist position"
+  },
+  "move_arm_to_zero": {
+    "group": "arm",
+    "needs": "arm",
+    "commands": [
+      {
+        "type": "arm",
+        "action": "move_to_position",
+        "args": {
+          "position_id": "zero",
+          "lock_wrist": true
+        }
+      }
+    ]
+  },
+  "move_arm_to_backup_camera": {
+    "group": "arm",
+    "needs": "arm",
+    "commands": [
+      {
+        "type": "arm",
+        "action": "move_to_position",
+        "args": {
+          "position_id": "backup_camera",
+          "lock_wrist": true
+        }
+      }
+    ]
+  },
+  "move_arm_to_pickup": {
+    "group": "arm",
+    "needs": "arm",
+    "commands": [
+      {
+        "type": "arm",
+        "action": "move_to_position",
+        "args": {
+          "position_id": "pickup",
+          "lock_wrist": true
+        }
+      }
+    ]
+  },
+  "move_arm_to_grab": {
+    "group": "arm",
+    "needs": "arm",
+    "commands": [
+      {
+        "type": "arm",
+        "action": "move_to_position",
+        "args": {
+          "position_id": "grab",
+          "lock_wrist": true
+        }
+      }
+    ]
+  },
+  "move_arm_to_drop": {
+    "group": "arm",
+    "needs": "arm",
+    "commands": [
+      {
+        "type": "arm",
+        "action": "move_to_position",
+        "args": {
+          "position_id": "drop",
+          "lock_wrist": true
+        }
+      }
+    ]
   }
 }
