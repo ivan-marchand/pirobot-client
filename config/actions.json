@@ -14,7 +14,6 @@
     "group": "robot",
     "commands": [
       {
-
         "type": "drive",
         "action": "patrol"
       },
@@ -34,6 +33,16 @@
       {
         "type": "light",
         "action": "toggle"
+      }
+    ]
+  },
+  "toggle_arm_light": {
+    "group": "light",
+    "needs": "arm",
+    "commands": [
+      {
+        "type": "light",
+        "action": "toggle_arm_light"
       }
     ]
   },
@@ -162,6 +171,32 @@
     "hat_group": "camera",
     "description": "Move camera down"
   },
+  "lock_camera": {
+    "name": "Lock camera",
+    "group": "camera",
+    "needs": "camera_servo",
+    "description": "Lock the camera in its current position"
+  },
+  "switch_camera": {
+    "group": "camera",
+    "needs": "back_camera",
+    "commands": [
+      {
+        "type": "camera",
+        "action": "toggle_camera"
+      }
+    ]
+  },
+  "toggle_overlay": {
+    "group": "camera",
+    "needs": "back_camera",
+    "commands": [
+      {
+        "type": "camera",
+        "action": "toggle_overlay"
+      }
+    ]
+  },
   "app_close": {
     "name": "Quit",
     "group": "program",
@@ -183,12 +218,6 @@
     "name": "Slow motion",
     "group": "robot",
     "description": "Toggle Robot slow motion mode"
-  },
-  "lock_camera": {
-    "name": "Lock camera",
-    "group": "camera",
-    "needs": "camera_servo",
-    "description": "Lock the camera in its current position"
   },
   "drive_forward": {
     "name": "Drive Forward",
@@ -229,5 +258,181 @@
     "description": "Turn robot to the right",
     "axis_group": "turn",
     "hat_group": "drive"
+  },
+  "shoulder_left": {
+    "group": "arm",
+    "needs": "arm",
+    "axis_group": "shoulder",
+    "down_value": 0.4,
+    "axis_name": "x",
+    "hat_group": "arm",
+    "description": "Move arm shoulder left"
+  },
+  "shoulder_right": {
+    "group": "arm",
+    "needs": "arm",
+    "axis_group": "shoulder",
+    "down_value": -0.4,
+    "axis_name": "x",
+    "hat_group": "arm",
+    "description": "Move arm shoulder right"
+  },
+  "forearm_up": {
+    "group": "arm",
+    "needs": "arm",
+    "axis_group": "forearm",
+    "down_value": 0.4,
+    "axis_name": "y",
+    "hat_group": "arm",
+    "description": "Move arm forearm up"
+  },
+  "forearm_down": {
+    "group": "arm",
+    "needs": "arm",
+    "axis_group": "forearm",
+    "down_value": -0.4,
+    "axis_name": "y",
+    "hat_group": "arm",
+    "description": "Move arm forearm down"
+  },
+  "open_claw": {
+    "group": "claw",
+    "needs": "arm",
+    "commands": [
+      {
+        "type": "arm",
+        "action": "move_servo_to_position",
+        "args": {
+          "id": "claw",
+          "angle": 180
+        }
+      }
+    ]
+  },
+  "close_claw": {
+    "group": "claw",
+    "needs": "arm",
+    "commands": [
+      {
+        "type": "arm",
+        "action": "move_servo_to_position",
+        "args": {
+          "id": "claw",
+          "angle": 0
+        }
+      }
+    ]
+  },
+  "claw_opening": {
+    "group": "claw",
+    "needs": "arm",
+    "axis_group": "claw",
+    "down_value": 0.6,
+    "axis_name": "x",
+    "hat_group": "claw",
+    "description": "Opening claw"
+  },
+  "claw_closing": {
+    "group": "claw",
+    "needs": "arm",
+    "axis_group": "claw",
+    "down_value": -0.6,
+    "axis_name": "x",
+    "hat_group": "claw",
+    "description": "Closing claw"
+  },
+  "wrist_up": {
+    "group": "claw",
+    "needs": "arm",
+    "axis_group": "wrist",
+    "down_value": 0.4,
+    "axis_name": "y",
+    "hat_group": "claw",
+    "description": "Opening claw"
+  },
+  "wrist_down": {
+    "group": "claw",
+    "needs": "arm",
+    "axis_group": "wrist",
+    "down_value": -0.4,
+    "axis_name": "y",
+    "hat_group": "claw",
+    "description": "Closing claw"
+  },
+  "lock_wrist": {
+    "name": "Lock wrist",
+    "group": "claw",
+    "needs": "arm",
+    "description": "Lock the wrist position"
+  },
+  "move_arm_to_zero": {
+    "group": "arm",
+    "needs": "arm",
+    "commands": [
+      {
+        "type": "arm",
+        "action": "move_to_position",
+        "args": {
+          "position_id": "zero",
+          "lock_wrist": true
+        }
+      }
+    ]
+  },
+  "move_arm_to_backup_camera": {
+    "group": "arm",
+    "needs": "arm",
+    "commands": [
+      {
+        "type": "arm",
+        "action": "move_to_position",
+        "args": {
+          "position_id": "backup_camera",
+          "lock_wrist": true
+        }
+      }
+    ]
+  },
+  "move_arm_to_pickup": {
+    "group": "arm",
+    "needs": "arm",
+    "commands": [
+      {
+        "type": "arm",
+        "action": "move_to_position",
+        "args": {
+          "position_id": "pickup",
+          "lock_wrist": true
+        }
+      }
+    ]
+  },
+  "move_arm_to_grab": {
+    "group": "arm",
+    "needs": "arm",
+    "commands": [
+      {
+        "type": "arm",
+        "action": "move_to_position",
+        "args": {
+          "position_id": "grab",
+          "lock_wrist": true
+        }
+      }
+    ]
+  },
+  "move_arm_to_drop": {
+    "group": "arm",
+    "needs": "arm",
+    "commands": [
+      {
+        "type": "arm",
+        "action": "move_to_position",
+        "args": {
+          "position_id": "drop",
+          "lock_wrist": true
+        }
+      }
+    ]
   }
 }

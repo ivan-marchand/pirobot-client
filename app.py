@@ -449,13 +449,14 @@ class App(QMainWindow):
             await asyncio.sleep(1)
 
     def start_gamepad(self):
-        callback = {
-            "axis_motion": self.client.gamepad_absolute_axis_callback,
-            "button": self.client.gamepad_button_callback,
-            "hat_motion": self.client.gamepad_hat_callback,
-            "joystick_added": self.gamepad_added_signal.emit,
-        }
-        GamePad.start_gamepad(callback=callback)
+        if self.client is not None:
+            callback = {
+                "axis_motion": self.client.gamepad_absolute_axis_callback,
+                "button": self.client.gamepad_button_callback,
+                "hat_motion": self.client.gamepad_hat_callback,
+                "joystick_added": self.gamepad_added_signal.emit,
+            }
+            GamePad.start_gamepad(callback=callback)
 
     def robot_init_callback(self, message):
         self.robot_name = message["robot_name"]
@@ -498,7 +499,8 @@ class App(QMainWindow):
 
     def reload_input_device_config(self):
         self.start_gamepad()
-        self.client.input_config_manager.load()
+        if self.client is not None:
+            self.client.input_config_manager.load()
 
     @pyqtSlot(np.ndarray)
     def update_image(self, cv_img):
